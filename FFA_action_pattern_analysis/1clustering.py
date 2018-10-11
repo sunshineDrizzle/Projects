@@ -37,6 +37,8 @@ def hac_scipy(data, cluster_nums, method, metric='euclidean', output=None):
     for num in cluster_nums:
         labels_list.append(fcluster(Z, num, 'maxclust'))
 
+        print('HAC finished: {}'.format(num))
+
     # if output is not None:
     #     plt.savefig(output)
 
@@ -96,6 +98,21 @@ def girvan_newman_community(graph, max_num):
         for idx, community in enumerate(communities):
             labels[list(community)] = idx + 1
         labels_list.append(labels)
+
+        print('GN finished: {}/{}'.format(max(labels), max_num))
+
+    return labels_list
+
+
+def k_means(data, cluster_nums, n_init=10):
+    from sklearn.cluster import KMeans
+
+    labels_list = []
+    for n_clusters in cluster_nums:
+        kmeans = KMeans(n_clusters, random_state=0, n_init=n_init).fit(data)
+        labels_list.append(kmeans.labels_ + 1)
+
+        print('KMeans finished: {}'.format(n_clusters))
 
     return labels_list
 
@@ -191,12 +208,12 @@ if __name__ == '__main__':
     print('Start: predefine some variates')
 
     # predefine parameters
-    method = 'HAC'  # 'HAC', 'KM', 'LV' or 'GN'
+    method = 'KM'  # 'HAC', 'KM', 'LV' or 'GN'
     weight_type = ('dissimilar', 'euclidean')
     clustering_thr = None  # a threshold used to cut rFFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize rFFA_data according to clustering_thr
     clustering_regress_mean = True  # If true, regress mean value from rFFA_data
-    subproject_name = '2mm_HAC_ward_regress'
+    subproject_name = '2mm_KM_init100_regress'
 
     # predefine paths
     working_dir = '/nfs/s2/userhome/chenxiayu/workingdir'
@@ -287,7 +304,7 @@ if __name__ == '__main__':
         labels_list = hac_scipy(rFFA_patterns, range(1, 201), 'ward',
                                 output=pjoin(subproject_dir, 'hac_dendrogram.png'))
     elif method == 'KM':
-        pass
+        labels_list = k_means(rFFA_patterns, range(1, 201), 100)
     else:
         raise RuntimeError('The method-{} is not supported!'.format(method))
 
