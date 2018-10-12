@@ -105,6 +105,14 @@ def girvan_newman_community(graph, max_num):
 
 
 def k_means(data, cluster_nums, n_init=10):
+    """
+    http://scikit-learn.org/stable/modules/clustering.html#k-means
+
+    :param data:
+    :param cluster_nums:
+    :param n_init:
+    :return:
+    """
     from sklearn.cluster import KMeans
 
     labels_list = []
@@ -206,13 +214,9 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
 if __name__ == '__main__':
     import os
     import nibabel as nib
-    import networkx as nx
 
     from os.path import join as pjoin
-    from community import modularity
     from commontool.io.io import CiftiReader
-    from commontool.algorithm.tool import calc_overlap
-    from commontool.algorithm.graph import array2adjacent_matrix
 
     # predefine some variates
     # -----------------------
@@ -221,10 +225,20 @@ if __name__ == '__main__':
     # predefine parameters
     method = 'KM'  # 'HAC', 'KM', 'LV' or 'GN'
     weight_type = ('dissimilar', 'euclidean')
+    assessment_metrics = ['dice', 'silhouette', 'elbow']  # 'dice', 'modularity', 'silhouette', 'elbow'
+    assessments_dict = dict()
+    for metric in assessment_metrics:
+        assessments_dict[metric] = []
     clustering_thr = None  # a threshold used to cut rFFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize rFFA_data according to clustering_thr
     clustering_regress_mean = True  # If true, regress mean value from rFFA_data
-    subproject_name = '2mm_KM_init1000_regress'
+    subproject_name = '2mm_KM_init10_regress'
+
+    is_graph_needed = False
+    method_metric_box = assessment_metrics + [method]
+    for i in ('LV', 'GN', 'modularity'):
+        if i in method_metric_box:
+            is_graph_needed = True
 
     # predefine paths
     working_dir = '/nfs/s2/userhome/chenxiayu/workingdir'
@@ -273,34 +287,40 @@ if __name__ == '__main__':
 
     # structure graph
     # -----------------------
-    print('Start: structure graph')
+    if is_graph_needed:
+        import networkx as nx
+        from commontool.algorithm.graph import array2adjacent_matrix
 
-    # create adjacent matrix
-    n_subjects = rFFA_patterns.shape[0]
-    edges = [(i, j) for i in range(n_subjects) for j in range(i + 1, n_subjects)]
-    coo_adj_matrix = array2adjacent_matrix(rFFA_patterns, weight_type,
-                                           weight_normalization=True, edges=edges)
+        print('Start: structure graph')
 
-    # show adjacent matrix image
-    # https://matplotlib.org/gallery/images_contours_and_fields/image_annotated_heatmap.html#sphx-glr-gallery-images-contours-and-fields-image-annotated-heatmap-py
-    adj_matrix = coo_adj_matrix.toarray()
-    fig, ax = plt.subplots()
-    im = ax.imshow(adj_matrix, cmap='YlGn')
-    cbar = fig.colorbar(im, ax=ax)
-    cbar.ax.set_ylabel('weight', rotation=-90, va="bottom")
-    ax.set_xticks(np.arange(n_subjects))
-    ax.set_xticklabels(subject_ids)
-    ax.set_yticks(np.arange(n_subjects))
-    ax.set_yticklabels(subject_ids)
-    plt.setp(ax.get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
-    fig.tight_layout()
+        # create adjacent matrix
+        n_subjects = rFFA_patterns.shape[0]
+        edges = [(i, j) for i in range(n_subjects) for j in range(i + 1, n_subjects)]
+        coo_adj_matrix = array2adjacent_matrix(rFFA_patterns, weight_type,
+                                               weight_normalization=True, edges=edges)
 
-    # create graph
-    graph = nx.Graph()
-    graph.add_nodes_from(range(n_subjects))
-    graph.add_weighted_edges_from(zip(coo_adj_matrix.row, coo_adj_matrix.col, coo_adj_matrix.data))
+        # show adjacent matrix image
+        # https://matplotlib.org/gallery/images_contours_and_fields/image_annotated_heatmap.html#sphx-glr-gallery-images-contours-and-fields-image-annotated-heatmap-py
+        adj_matrix = coo_adj_matrix.toarray()
+        fig, ax = plt.subplots()
+        im = ax.imshow(adj_matrix, cmap='YlGn')
+        cbar = fig.colorbar(im, ax=ax)
+        cbar.ax.set_ylabel('weight', rotation=-90, va="bottom")
+        ax.set_xticks(np.arange(n_subjects))
+        ax.set_xticklabels(subject_ids)
+        ax.set_yticks(np.arange(n_subjects))
+        ax.set_yticklabels(subject_ids)
+        plt.setp(ax.get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
+        fig.tight_layout()
 
-    print('Finish: structure graph')
+        # create graph
+        graph = nx.Graph()
+        graph.add_nodes_from(range(n_subjects))
+        graph.add_weighted_edges_from(zip(coo_adj_matrix.row, coo_adj_matrix.col, coo_adj_matrix.data))
+
+        print('Finish: structure graph')
+    else:
+        graph = None
     # -----------------------
 
     # do clustering
@@ -312,10 +332,10 @@ if __name__ == '__main__':
     elif method == 'GN':
         labels_list = girvan_newman_community(graph, 200)
     elif method == 'HAC':
-        labels_list = hac_scipy(rFFA_patterns, range(1, 201), 'ward',
+        labels_list = hac_scipy(rFFA_patterns, range(2, 201), 'ward',
                                 output=pjoin(subproject_dir, 'hac_dendrogram.png'))
     elif method == 'KM':
-        labels_list = k_means(rFFA_patterns, range(1, 201), 1000)
+        labels_list = k_means(rFFA_patterns, range(2, 201), 10)
     else:
         raise RuntimeError('The method-{} is not supported!'.format(method))
 
@@ -326,56 +346,108 @@ if __name__ == '__main__':
     # -----------------------
     print('Start: calculate assessment curve')
 
-    dices = []
-    modularities = []
     n_labels = len(labels_list)
     for idx, labels in enumerate(labels_list):
-        sub_dices = []
-        for label in range(1, max(labels)+1):
-            subgroup_rFFA_patterns = np.atleast_2d(maps[labels == label])[:, rFFA_vertices]
-            subgroup_rFFA_patterns_mean = np.mean(subgroup_rFFA_patterns, 0)
+        for metric in assessment_metrics:
 
-            collection1 = np.where(subgroup_rFFA_patterns_mean > 2.3)[0]
-            collection2s = [np.where(i > 2.3)[0] for i in subgroup_rFFA_patterns]
-            tmp_dices = map(lambda c2: calc_overlap(collection1, c2), collection2s)
-            sub_dices.extend(tmp_dices)
-        dices.append(sub_dices)
-        partition_dict = {k: v for k, v in enumerate(labels)}
-        modularities.append(modularity(partition_dict, graph, weight='weight'))
-        print('Assessment calculated: {0}/{1}'.format(idx+1, n_labels))
+            if metric == 'dice':
+                from commontool.algorithm.tool import calc_overlap
 
-    # plot dice assessment curve
-    v_plotter = ClusteringVlineMoverPlotter(rFFA_patterns, labels_list, subject_ids, subproject_dir)
+                sub_dices = []
+                for label in range(1, max(labels) + 1):
+                    subgroup_rFFA_patterns = np.atleast_2d(maps[labels == label])[:, rFFA_vertices]
+                    subgroup_rFFA_patterns_mean = np.mean(subgroup_rFFA_patterns, 0)
+
+                    collection1 = np.where(subgroup_rFFA_patterns_mean > 2.3)[0]
+                    collection2s = [np.where(i > 2.3)[0] for i in subgroup_rFFA_patterns]
+                    tmp_dices = map(lambda c2: calc_overlap(collection1, c2), collection2s)
+                    sub_dices.extend(tmp_dices)
+                assessments_dict[metric].append(sub_dices)
+
+            elif metric == 'modularity':
+                from community import modularity
+
+                partition_dict = {k: v for k, v in enumerate(labels)}
+                assessments_dict[metric].append(modularity(partition_dict, graph, weight='weight'))
+
+            elif metric == 'silhouette':
+                from sklearn.metrics import silhouette_score
+
+                # https://stackoverflow.com/questions/19197715/scikit-learn-k-means-elbow-criterion
+                assessments_dict[metric].append(silhouette_score(rFFA_patterns, labels, metric=weight_type[1]))
+
+            elif metric == 'elbow':
+                from scipy.spatial.distance import cdist
+
+                # https://stackoverflow.com/questions/19197715/scikit-learn-k-means-elbow-criterion
+                sub_elbows = []
+                for label in range(1, max(labels) + 1):
+                    subgroup_rFFA_patterns = np.atleast_2d(rFFA_patterns[labels == label])
+                    subgroup_rFFA_patterns_mean = np.mean(subgroup_rFFA_patterns, 0)
+                    subgroup_rFFA_patterns_mean = np.atleast_2d(subgroup_rFFA_patterns_mean)
+                    tmp_elbows = cdist(subgroup_rFFA_patterns_mean, subgroup_rFFA_patterns)[0]
+                    sub_elbows.extend(tmp_elbows)
+                assessments_dict[metric].append(sub_elbows)
+
+            else:
+                raise RuntimeWarning('Metric-{} is not supported, ignore!'.format(metric))
+
+        print('Assessment calculated: {0}/{1}'.format(idx + 1, n_labels))
+
+    metric0 = assessment_metrics[0]
     x = np.arange(n_labels)
     x_labels = np.array([max(labels) for labels in labels_list])
-    y = np.mean(dices, 1)
-    std = np.std(dices, 1)
-    v_plotter.axes[0].plot(x, y, 'b.-')
-    v_plotter.axes[0].fill_between(x, y-std, y+std, alpha=0.5)
-    v_plotter.axes[0].set_title('assessment for #subgroups')
-    v_plotter.axes[0].set_xlabel('#subgroups')
-    if n_labels > 2:
-        vline_idx = int(n_labels/2)
-        v_plotter.axes[0].set_xticks(x[[0, vline_idx, -1]])
-        v_plotter.axes[0].set_xticklabels(x_labels[[0, vline_idx, -1]])
-    else:
-        vline_idx = 0
-        v_plotter.axes[0].set_xticks(x)
-        v_plotter.axes[0].set_xticklabels(x_labels)
-    v_plotter.axes[0].set_ylabel('dice', color='b')
-    v_plotter.axes[0].tick_params('y', colors='b')
-    plt.setp(v_plotter.axes[0].get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
+    vline_plotter_holder = []
+    for metric in assessment_metrics:
+        # plot assessment curve
+        v_plotter = ClusteringVlineMoverPlotter(rFFA_patterns, labels_list, subject_ids, subproject_dir)
 
-    # plot modularity assessment curve in a twin axis
-    # https://matplotlib.org/examples/api/two_scales.html
-    v_plotter.add_twinx(0)
-    v_plotter.axes_twin[0].plot(x, modularities, 'r.-')
-    v_plotter.axes_twin[0].set_ylabel('modularity', color='r')
-    v_plotter.axes_twin[0].tick_params('y', colors='r')
+        if metric0 in ('dice', 'elbow'):
+            y = np.mean(assessments_dict[metric0], 1)
+            std = np.std(assessments_dict[metric0], 1)
+            v_plotter.axes[0].plot(x, y, 'b.-')
+            v_plotter.axes[0].fill_between(x, y-std, y+std, alpha=0.5)
+        elif metric0 in ('modularity', 'silhouette'):
+            v_plotter.axes[0].plot(x, assessments_dict[metric0], 'b.-')
+        else:
+            raise RuntimeError("The first metric must exist in ('dice', 'modularity', 'silhouette', 'elbow')")
 
-    # add vline mover
-    v_plotter.add_vline_mover(vline_idx=vline_idx, x_round=True)
-    v_plotter.figure.tight_layout()
+        v_plotter.axes[0].set_title('assessment for #subgroups')
+        v_plotter.axes[0].set_xlabel('#subgroups')
+        if n_labels > 2:
+            vline_idx = int(n_labels / 2)
+            v_plotter.axes[0].set_xticks(x[[0, vline_idx, -1]])
+            v_plotter.axes[0].set_xticklabels(x_labels[[0, vline_idx, -1]])
+        else:
+            vline_idx = 0
+            v_plotter.axes[0].set_xticks(x)
+            v_plotter.axes[0].set_xticklabels(x_labels)
+        v_plotter.axes[0].set_ylabel(metric0, color='b')
+        v_plotter.axes[0].tick_params('y', colors='b')
+        plt.setp(v_plotter.axes[0].get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
+
+        if metric != metric0:
+            # plot another assessment curve in a twin axis
+            # https://matplotlib.org/examples/api/two_scales.html
+            v_plotter.add_twinx(0)
+            if metric in ('dice', 'elbow'):
+                y = np.mean(assessments_dict[metric], 1)
+                std = np.std(assessments_dict[metric], 1)
+                v_plotter.axes_twin[0].plot(x, y, 'r.-')
+                v_plotter.axes_twin[0].fill_between(x, y - std, y + std, alpha=0.5)
+            elif metric in ('modularity', 'silhouette'):
+                v_plotter.axes_twin[0].plot(x, assessments_dict[metric], 'r.-')
+            else:
+                raise RuntimeWarning('Metric-{} is not supported, ignore!'.format(metric))
+
+            v_plotter.axes_twin[0].set_ylabel(metric, color='r')
+            v_plotter.axes_twin[0].tick_params('y', colors='r')
+
+        # add vline mover
+        v_plotter.add_vline_mover(vline_idx=vline_idx, x_round=True)
+        v_plotter.figure.tight_layout()
+
+        vline_plotter_holder.append(v_plotter)
 
     print('Finish: calculate assessment curve')
     # -----------------------
