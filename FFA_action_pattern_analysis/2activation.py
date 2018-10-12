@@ -8,8 +8,8 @@ if __name__ == '__main__':
     # predefine some variates
     # -----------------------
     # predefine parameters
-    n_clusters = 20
-    subproject_name = '4mm_ward_regress'
+    n_clusters = 3
+    subproject_name = '2mm_KM_init100_regress'
     acti_thr = 2.3  # a threshold about significantly activated
     prob_thr = 0.8
     top_acti_percent = 0.1
@@ -19,8 +19,8 @@ if __name__ == '__main__':
     project_dir = pjoin(working_dir, 'study/rFFA_clustering')
     subproject_dir = pjoin(project_dir, subproject_name)
     n_clusters_dir = pjoin(subproject_dir, '{}clusters'.format(n_clusters))
-    rFFA_label = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_4mm.label')
-    FSR_maps = pjoin(project_dir, 'data/HCP_face-avg/s4/S1200.1080.FACE-AVG_level2_zstat_hp200_s4_MSMAll.dscalar.nii')
+    rFFA_label = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    FSR_maps = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     subject_labels_path = pjoin(n_clusters_dir, 'subject_labels')
     # -----------------------
 

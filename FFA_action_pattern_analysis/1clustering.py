@@ -129,8 +129,6 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
         self.subject_ids = subject_ids
         self.subproject_dir = subproject_dir
 
-        self.text = None
-
     def _on_clicked(self, event):
         if event.button == 3:
             # do something on right click
@@ -183,13 +181,26 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
             # Here is earlier than VlineMover's left button response. So,
             # we acquire x index by event.xdata.
             if event.inaxes in self.axes or event.inaxes in self.axes_twin:
-                if self.text is not None:
-                    self.text.remove()
+                n_labels = len(self.labels_list)
+                if n_labels > 2:
+                    # prepare
+                    x = np.arange(n_labels)
+                    x_labels = np.array([max(labels) for labels in self.labels_list])
+                    xticks = x[[0, -1]]
+                    xticklabels = x_labels[[0, -1]]
 
-                labels_idx = int(round(event.xdata))
-                labels = self.labels_list[labels_idx]
-                n_clusters = max(labels)
-                self.text = self.figure.text(0.85, 0.04, '{} subgroups'.format(n_clusters))
+                    # update or not
+                    labels_idx = int(round(event.xdata))
+                    if labels_idx not in xticks:
+                        xticks = np.append(xticks, labels_idx)
+
+                        labels = self.labels_list[labels_idx]
+                        n_clusters = max(labels)
+                        xticklabels = np.append(xticklabels, n_clusters)
+
+                    # plot
+                    event.inaxes.set_xticks(xticks)
+                    event.inaxes.set_xticklabels(xticklabels)
 
 
 if __name__ == '__main__':
@@ -213,7 +224,7 @@ if __name__ == '__main__':
     clustering_thr = None  # a threshold used to cut rFFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize rFFA_data according to clustering_thr
     clustering_regress_mean = True  # If true, regress mean value from rFFA_data
-    subproject_name = '2mm_KM_init100_regress'
+    subproject_name = '2mm_KM_init1000_regress'
 
     # predefine paths
     working_dir = '/nfs/s2/userhome/chenxiayu/workingdir'
@@ -304,7 +315,7 @@ if __name__ == '__main__':
         labels_list = hac_scipy(rFFA_patterns, range(1, 201), 'ward',
                                 output=pjoin(subproject_dir, 'hac_dendrogram.png'))
     elif method == 'KM':
-        labels_list = k_means(rFFA_patterns, range(1, 201), 100)
+        labels_list = k_means(rFFA_patterns, range(1, 201), 1000)
     else:
         raise RuntimeError('The method-{} is not supported!'.format(method))
 
@@ -344,9 +355,11 @@ if __name__ == '__main__':
     v_plotter.axes[0].set_title('assessment for #subgroups')
     v_plotter.axes[0].set_xlabel('#subgroups')
     if n_labels > 2:
-        v_plotter.axes[0].set_xticks(x[[0, int(n_labels/2), -1]])
-        v_plotter.axes[0].set_xticklabels(x_labels[[0, int(n_labels/2), -1]])
+        vline_idx = int(n_labels/2)
+        v_plotter.axes[0].set_xticks(x[[0, vline_idx, -1]])
+        v_plotter.axes[0].set_xticklabels(x_labels[[0, vline_idx, -1]])
     else:
+        vline_idx = 0
         v_plotter.axes[0].set_xticks(x)
         v_plotter.axes[0].set_xticklabels(x_labels)
     v_plotter.axes[0].set_ylabel('dice', color='b')
@@ -361,7 +374,7 @@ if __name__ == '__main__':
     v_plotter.axes_twin[0].tick_params('y', colors='r')
 
     # add vline mover
-    v_plotter.add_vline_mover(x_round=True)
+    v_plotter.add_vline_mover(vline_idx=vline_idx, x_round=True)
     v_plotter.figure.tight_layout()
 
     print('Finish: calculate assessment curve')
