@@ -184,6 +184,7 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
             ax.set_ylabel('subjects')
             # plt.savefig(pjoin(n_clusters_dir, 'rFFA_patterns_rearranged.png'))
             plt.show()
+
         elif event.button == 1:
             # do something on left click
             # Here is earlier than VlineMover's left button response. So,
@@ -217,25 +218,29 @@ if __name__ == '__main__':
 
     from os.path import join as pjoin
     from commontool.io.io import CiftiReader
+    from commontool.algorithm.tool import elbow_score
+    from commontool.algorithm.plot import auto_bar_width, show_bar_value
 
     # predefine some variates
     # -----------------------
     print('Start: predefine some variates')
 
     # predefine parameters
-    method = 'KM'  # 'HAC', 'KM', 'LV' or 'GN'
+    method = 'HAC'  # 'HAC', 'KM', 'LV' or 'GN'
     weight_type = ('dissimilar', 'euclidean')
-    assessment_metrics = ['dice', 'silhouette', 'elbow']  # 'dice', 'modularity', 'silhouette', 'elbow'
+    # 'dice', 'modularity', 'silhouette', 'elbow_inner_centroid'
+    # 'elbow_inner_pairwise', 'elbow_inter_centroid', 'elbow_inter_pairwise'
+    assessment_metrics = ('elbow_inter_centroid',)
     assessments_dict = dict()
     for metric in assessment_metrics:
         assessments_dict[metric] = []
     clustering_thr = None  # a threshold used to cut rFFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize rFFA_data according to clustering_thr
     clustering_regress_mean = True  # If true, regress mean value from rFFA_data
-    subproject_name = '2mm_KM_init10_regress'
+    subproject_name = '2mm_HAC_ward_regress'
 
     is_graph_needed = False
-    method_metric_box = assessment_metrics + [method]
+    method_metric_box = assessment_metrics + (method,)
     for i in ('LV', 'GN', 'modularity'):
         if i in method_metric_box:
             is_graph_needed = True
@@ -270,12 +275,12 @@ if __name__ == '__main__':
         rFFA_patterns = rFFA_patterns - rFFA_pattern_means
 
     # show rFFA_patterns
-    fig, ax = plt.subplots()
-    im = ax.imshow(rFFA_patterns, cmap='jet')
-    cbar = fig.colorbar(im, ax=ax)
-    cbar.ax.set_ylabel('activation', rotation=-90, va="bottom")
-    ax.set_xlabel('vertices')
-    ax.set_ylabel('subjects')
+    # fig, ax = plt.subplots()
+    # im = ax.imshow(rFFA_patterns, cmap='jet')
+    # cbar = fig.colorbar(im, ax=ax)
+    # cbar.ax.set_ylabel('activation', rotation=-90, va="bottom")
+    # ax.set_xlabel('vertices')
+    # ax.set_ylabel('subjects')
     # plt.savefig(pjoin(subproject_dir, 'rFFA_patterns.png'))
 
     # prepare subject ids
@@ -332,7 +337,7 @@ if __name__ == '__main__':
     elif method == 'GN':
         labels_list = girvan_newman_community(graph, 200)
     elif method == 'HAC':
-        labels_list = hac_scipy(rFFA_patterns, range(2, 201), 'ward',
+        labels_list = hac_scipy(rFFA_patterns, range(1, 21), 'ward',
                                 output=pjoin(subproject_dir, 'hac_dendrogram.png'))
     elif method == 'KM':
         labels_list = k_means(rFFA_patterns, range(2, 201), 10)
@@ -374,23 +379,18 @@ if __name__ == '__main__':
                 from sklearn.metrics import silhouette_score
 
                 # https://stackoverflow.com/questions/19197715/scikit-learn-k-means-elbow-criterion
-                assessments_dict[metric].append(silhouette_score(rFFA_patterns, labels, metric=weight_type[1]))
+                # http://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html#sklearn.metrics.silhouette_score
+                assessments_dict[metric].append(silhouette_score(rFFA_patterns, labels,
+                                                                 metric=weight_type[1], random_state=0))
 
-            elif metric == 'elbow':
-                from scipy.spatial.distance import cdist
-
-                # https://stackoverflow.com/questions/19197715/scikit-learn-k-means-elbow-criterion
-                sub_elbows = []
-                for label in range(1, max(labels) + 1):
-                    subgroup_rFFA_patterns = np.atleast_2d(rFFA_patterns[labels == label])
-                    subgroup_rFFA_patterns_mean = np.mean(subgroup_rFFA_patterns, 0)
-                    subgroup_rFFA_patterns_mean = np.atleast_2d(subgroup_rFFA_patterns_mean)
-                    tmp_elbows = cdist(subgroup_rFFA_patterns_mean, subgroup_rFFA_patterns)[0]
-                    sub_elbows.extend(tmp_elbows)
-                assessments_dict[metric].append(sub_elbows)
+            elif 'elbow' in metric:
+                tmp = metric.split('_')
+                assessment = elbow_score(rFFA_patterns, labels, metric=weight_type[1],
+                                         type=(tmp[1], tmp[2]))
+                assessments_dict[metric].append(assessment)
 
             else:
-                raise RuntimeWarning('Metric-{} is not supported, ignore!'.format(metric))
+                raise RuntimeError('Valid assessment metrics must be in {}.'.format(assessment_metrics))
 
         print('Assessment calculated: {0}/{1}'.format(idx + 1, n_labels))
 
@@ -402,15 +402,20 @@ if __name__ == '__main__':
         # plot assessment curve
         v_plotter = ClusteringVlineMoverPlotter(rFFA_patterns, labels_list, subject_ids, subproject_dir)
 
-        if metric0 in ('dice', 'elbow'):
+        if metric0 == 'dice':
             y = np.mean(assessments_dict[metric0], 1)
             std = np.std(assessments_dict[metric0], 1)
             v_plotter.axes[0].plot(x, y, 'b.-')
             v_plotter.axes[0].fill_between(x, y-std, y+std, alpha=0.5)
-        elif metric0 in ('modularity', 'silhouette'):
-            v_plotter.axes[0].plot(x, assessments_dict[metric0], 'b.-')
+        elif 'elbow' in metric0:
+            width = auto_bar_width(x)
+            y1 = assessments_dict[metric0]
+            y2 = [-y1[i] + y1[i+1] for i in x[:-1]]
+            v_plotter.axes[0].bar(x, y1, width, color='cyan')
+            v_plotter.axes[0].plot(x, y1, 'b.-')
+            v_plotter.axes[0].plot(x[1:], y2, 'k.-')
         else:
-            raise RuntimeError("The first metric must exist in ('dice', 'modularity', 'silhouette', 'elbow')")
+            v_plotter.axes[0].plot(x, assessments_dict[metric0], 'b.-')
 
         v_plotter.axes[0].set_title('assessment for #subgroups')
         v_plotter.axes[0].set_xlabel('#subgroups')
@@ -430,15 +435,13 @@ if __name__ == '__main__':
             # plot another assessment curve in a twin axis
             # https://matplotlib.org/examples/api/two_scales.html
             v_plotter.add_twinx(0)
-            if metric in ('dice', 'elbow'):
+            if metric == 'dice':
                 y = np.mean(assessments_dict[metric], 1)
                 std = np.std(assessments_dict[metric], 1)
                 v_plotter.axes_twin[0].plot(x, y, 'r.-')
                 v_plotter.axes_twin[0].fill_between(x, y - std, y + std, alpha=0.5)
-            elif metric in ('modularity', 'silhouette'):
-                v_plotter.axes_twin[0].plot(x, assessments_dict[metric], 'r.-')
             else:
-                raise RuntimeWarning('Metric-{} is not supported, ignore!'.format(metric))
+                v_plotter.axes_twin[0].plot(x, assessments_dict[metric], 'r.-')
 
             v_plotter.axes_twin[0].set_ylabel(metric, color='r')
             v_plotter.axes_twin[0].tick_params('y', colors='r')
