@@ -31,8 +31,8 @@ def hac_scipy(data, cluster_nums, method, metric='euclidean', output=None):
 
     # do hierarchical clustering on rFFA_data and show the dendrogram by using scipy
     Z = linkage(data, method, metric)
-    # plt.figure()
-    # dendrogram(Z)
+    plt.figure()
+    dendrogram(Z)
     labels_list = []
     for num in cluster_nums:
         labels_list.append(fcluster(Z, num, 'maxclust'))
@@ -125,6 +125,37 @@ def k_means(data, cluster_nums, n_init=10):
     return labels_list
 
 
+def gap_stat(data, cluster_nums):
+    from gap_statistic import OptimalK
+
+    optimalK = OptimalK()
+    return optimalK(data, cluster_array=cluster_nums)
+
+
+def gap_stat_mine(data, cluster_nums, ref_num=10, cluster_method=None):
+    from commontool.algorithm.tool import gap_statistic
+
+    labels_list, Wks, Wks_refs_log_mean, gaps, s, k_selected = \
+        gap_statistic(data, cluster_nums, ref_num, cluster_method)
+
+    x = np.arange(len(cluster_nums))
+    plt.figure()
+    plt.plot(x, Wks, 'b.-')
+    plt.xlabel('#subgroup')
+    plt.ylabel(('W\u2096'))
+    plt.xticks(x, cluster_nums)
+
+    Wks_log = np.log(Wks)
+    plt.figure()
+    plt.plot(x, Wks_log, 'b.-')
+    plt.plot(x, Wks_refs_log_mean, 'r.-')
+    plt.xlabel('#subgroup')
+    plt.ylabel('log(W\u2096)')
+    plt.xticks(x, cluster_nums)
+
+    return labels_list, gaps, s, k_selected
+
+
 class ClusteringVlineMoverPlotter(VlineMoverPlotter):
 
     def __init__(self, data, labels_list, subject_ids, subproject_dir,
@@ -176,13 +207,7 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
                 wf.write(labels_out)
 
             # show heatmap for rearranged data
-            fig, ax = plt.subplots()
-            im = ax.imshow(data_rearranged, cmap='jet')
-            cbar = fig.colorbar(im, ax=ax)
-            cbar.ax.set_ylabel('activation', rotation=-90, va="bottom")
-            ax.set_xlabel('vertices')
-            ax.set_ylabel('subjects')
-            # plt.savefig(pjoin(n_clusters_dir, 'rFFA_patterns_rearranged.png'))
+            imshow(data_rearranged, 'vertices', 'subjects', 'jet', 'activation')
             plt.show()
 
         elif event.button == 1:
@@ -219,25 +244,28 @@ if __name__ == '__main__':
     from os.path import join as pjoin
     from commontool.io.io import CiftiReader
     from commontool.algorithm.tool import elbow_score
-    from commontool.algorithm.plot import auto_bar_width, show_bar_value
+    from commontool.algorithm.plot import auto_bar_width, imshow
 
     # predefine some variates
     # -----------------------
     print('Start: predefine some variates')
 
     # predefine parameters
-    method = 'HAC'  # 'HAC', 'KM', 'LV' or 'GN'
+    method = 'GS_KM'  # 'HAC', 'KM', 'LV', 'GN' or 'GS_KM'
     weight_type = ('dissimilar', 'euclidean')
     # 'dice', 'modularity', 'silhouette', 'elbow_inner_centroid'
     # 'elbow_inner_pairwise', 'elbow_inter_centroid', 'elbow_inter_pairwise'
-    assessment_metrics = ('elbow_inter_centroid',)
+    if 'GS' in method:
+        assessment_metrics = ('gap statistic',)
+    else:
+        assessment_metrics = ('elbow_inner_centroid',)
     assessments_dict = dict()
     for metric in assessment_metrics:
         assessments_dict[metric] = []
     clustering_thr = None  # a threshold used to cut rFFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize rFFA_data according to clustering_thr
     clustering_regress_mean = True  # If true, regress mean value from rFFA_data
-    subproject_name = '2mm_HAC_ward_regress'
+    subproject_name = '2mm_KM_init10_regress'
 
     is_graph_needed = False
     method_metric_box = assessment_metrics + (method,)
@@ -275,13 +303,7 @@ if __name__ == '__main__':
         rFFA_patterns = rFFA_patterns - rFFA_pattern_means
 
     # show rFFA_patterns
-    # fig, ax = plt.subplots()
-    # im = ax.imshow(rFFA_patterns, cmap='jet')
-    # cbar = fig.colorbar(im, ax=ax)
-    # cbar.ax.set_ylabel('activation', rotation=-90, va="bottom")
-    # ax.set_xlabel('vertices')
-    # ax.set_ylabel('subjects')
-    # plt.savefig(pjoin(subproject_dir, 'rFFA_patterns.png'))
+    imshow(rFFA_patterns, 'vertices', 'subjects', 'jet', 'activation')
 
     # prepare subject ids
     subject_ids = [name.split('_')[0] for name in maps_reader.map_names()]
@@ -305,18 +327,8 @@ if __name__ == '__main__':
                                                weight_normalization=True, edges=edges)
 
         # show adjacent matrix image
-        # https://matplotlib.org/gallery/images_contours_and_fields/image_annotated_heatmap.html#sphx-glr-gallery-images-contours-and-fields-image-annotated-heatmap-py
         adj_matrix = coo_adj_matrix.toarray()
-        fig, ax = plt.subplots()
-        im = ax.imshow(adj_matrix, cmap='YlGn')
-        cbar = fig.colorbar(im, ax=ax)
-        cbar.ax.set_ylabel('weight', rotation=-90, va="bottom")
-        ax.set_xticks(np.arange(n_subjects))
-        ax.set_xticklabels(subject_ids)
-        ax.set_yticks(np.arange(n_subjects))
-        ax.set_yticklabels(subject_ids)
-        plt.setp(ax.get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
-        fig.tight_layout()
+        imshow(adj_matrix, cmap='YlGn', cbar_label='weight', xticklabels=subject_ids, yticklabels=subject_ids)
 
         # create graph
         graph = nx.Graph()
@@ -337,10 +349,13 @@ if __name__ == '__main__':
     elif method == 'GN':
         labels_list = girvan_newman_community(graph, 200)
     elif method == 'HAC':
-        labels_list = hac_scipy(rFFA_patterns, range(1, 21), 'ward',
+        labels_list = hac_scipy(rFFA_patterns, range(2, 201), 'ward',
                                 output=pjoin(subproject_dir, 'hac_dendrogram.png'))
     elif method == 'KM':
         labels_list = k_means(rFFA_patterns, range(2, 201), 10)
+    elif method == 'GS_KM':
+        labels_list, gaps, s, k_selected = gap_stat_mine(rFFA_patterns, range(1, 51))
+        assessments_dict['gap statistic'] = (gaps, s, k_selected)
     else:
         raise RuntimeError('The method-{} is not supported!'.format(method))
 
@@ -389,6 +404,9 @@ if __name__ == '__main__':
                                          type=(tmp[1], tmp[2]))
                 assessments_dict[metric].append(assessment)
 
+            elif metric == 'gap statistic':
+                pass
+
             else:
                 raise RuntimeError('Valid assessment metrics must be in {}.'.format(assessment_metrics))
 
@@ -396,7 +414,7 @@ if __name__ == '__main__':
 
     metric0 = assessment_metrics[0]
     x = np.arange(n_labels)
-    x_labels = np.array([max(labels) for labels in labels_list])
+    x_labels = np.array([len(set(labels)) for labels in labels_list])
     vline_plotter_holder = []
     for metric in assessment_metrics:
         # plot assessment curve
@@ -411,25 +429,35 @@ if __name__ == '__main__':
             width = auto_bar_width(x)
             y1 = assessments_dict[metric0]
             y2 = [-y1[i] + y1[i+1] for i in x[:-1]]
-            v_plotter.axes[0].bar(x, y1, width, color='cyan')
+            # v_plotter.axes[0].bar(x, y1, width, color='cyan')
             v_plotter.axes[0].plot(x, y1, 'b.-')
-            v_plotter.axes[0].plot(x[1:], y2, 'k.-')
+            # v_plotter.axes[0].plot(x[1:], y2, 'k.-')
+        elif metric0 == 'gap statistic':
+            v_plotter.axes[0].plot(x, assessments_dict[metric0][0], 'b.-')
+            v_plotter.axes[0].fill_between(x, assessments_dict[metric0][0] - assessments_dict[metric0][1],
+                                           assessments_dict[metric0][0] + assessments_dict[metric0][1], alpha=0.5)
         else:
             v_plotter.axes[0].plot(x, assessments_dict[metric0], 'b.-')
 
         v_plotter.axes[0].set_title('assessment for #subgroups')
         v_plotter.axes[0].set_xlabel('#subgroups')
         if n_labels > 2:
-            vline_idx = int(n_labels / 2)
+            if metric0 == 'gap statistic':
+                vline_idx = np.where(x_labels == assessments_dict[metric0][2])[0][0]
+            else:
+                vline_idx = int(n_labels / 2)
             v_plotter.axes[0].set_xticks(x[[0, vline_idx, -1]])
             v_plotter.axes[0].set_xticklabels(x_labels[[0, vline_idx, -1]])
+            plt.setp(v_plotter.axes[0].get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
         else:
-            vline_idx = 0
+            if metric0 == 'gap statistic':
+                vline_idx = np.where(x_labels == assessments_dict[metric0][2])[0][0]
+            else:
+                vline_idx = 0
             v_plotter.axes[0].set_xticks(x)
             v_plotter.axes[0].set_xticklabels(x_labels)
         v_plotter.axes[0].set_ylabel(metric0, color='b')
         v_plotter.axes[0].tick_params('y', colors='b')
-        plt.setp(v_plotter.axes[0].get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
 
         if metric != metric0:
             # plot another assessment curve in a twin axis
