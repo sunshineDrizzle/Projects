@@ -7,7 +7,7 @@ from commontool.algorithm.plot import VlineMoverPlotter
 def hac_sklearn(data, n_clusters):
     from sklearn.cluster import AgglomerativeClustering
 
-    # do hierarchical clustering on rFFA_data by using sklearn
+    # do hierarchical clustering on FFA_data by using sklearn
     clustering = AgglomerativeClustering(linkage='ward', n_clusters=n_clusters)
     clustering.fit(data)
 
@@ -29,7 +29,7 @@ def hac_scipy(data, cluster_nums, method, metric='euclidean', output=None):
     """
     from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 
-    # do hierarchical clustering on rFFA_data and show the dendrogram by using scipy
+    # do hierarchical clustering on FFA_data and show the dendrogram by using scipy
     Z = linkage(data, method, metric)
     plt.figure()
     dendrogram(Z)
@@ -258,13 +258,13 @@ if __name__ == '__main__':
     if 'GS' in method:
         assessment_metrics = ('gap statistic',)
     else:
-        assessment_metrics = ('elbow_inner_centroid',)
+        assessment_metrics = ('elbow_inner_standard',)
     assessments_dict = dict()
     for metric in assessment_metrics:
         assessments_dict[metric] = []
-    clustering_thr = None  # a threshold used to cut rFFA_data before clustering (default: None)
-    clustering_bin = False  # If true, binarize rFFA_data according to clustering_thr
-    clustering_regress_mean = True  # If true, regress mean value from rFFA_data
+    clustering_thr = None  # a threshold used to cut FFA_data before clustering (default: None)
+    clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
+    clustering_regress_mean = True  # If true, regress mean value from FFA_data
     subproject_name = '2mm_KM_init10_regress'
 
     is_graph_needed = False
@@ -275,9 +275,9 @@ if __name__ == '__main__':
 
     # predefine paths
     working_dir = '/nfs/s2/userhome/chenxiayu/workingdir'
-    project_dir = pjoin(working_dir, 'study/rFFA_clustering')
+    project_dir = pjoin(working_dir, 'study/FFA_clustering')
     subproject_dir = pjoin(project_dir, subproject_name)
-    rFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
 
     print('Finish: predefine some variates')
@@ -287,23 +287,23 @@ if __name__ == '__main__':
     # -----------------------
     print('Start: prepare data')
 
-    # prepare rFFA patterns
-    rFFA_vertices = nib.freesurfer.read_label(rFFA_label_path)
+    # prepare FFA patterns
+    FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
     maps_reader = CiftiReader(maps_path)
     maps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
-    rFFA_patterns = maps[:, rFFA_vertices]
+    FFA_patterns = maps[:, FFA_vertices]
 
     if clustering_thr is not None:
         if clustering_bin:
-            rFFA_patterns = (rFFA_patterns > clustering_thr).astype(np.int8)
+            FFA_patterns = (FFA_patterns > clustering_thr).astype(np.int8)
         else:
-            rFFA_patterns[rFFA_patterns <= clustering_thr] = clustering_thr
+            FFA_patterns[FFA_patterns <= clustering_thr] = clustering_thr
     if clustering_regress_mean and not clustering_bin:
-        rFFA_pattern_means = np.atleast_2d(np.mean(rFFA_patterns, 1)).T
-        rFFA_patterns = rFFA_patterns - rFFA_pattern_means
+        FFA_pattern_means = np.atleast_2d(np.mean(FFA_patterns, 1)).T
+        FFA_patterns = FFA_patterns - FFA_pattern_means
 
-    # show rFFA_patterns
-    imshow(rFFA_patterns, 'vertices', 'subjects', 'jet', 'activation')
+    # show FFA_patterns
+    imshow(FFA_patterns, 'vertices', 'subjects', 'jet', 'activation')
 
     # prepare subject ids
     subject_ids = [name.split('_')[0] for name in maps_reader.map_names()]
@@ -321,9 +321,9 @@ if __name__ == '__main__':
         print('Start: structure graph')
 
         # create adjacent matrix
-        n_subjects = rFFA_patterns.shape[0]
+        n_subjects = FFA_patterns.shape[0]
         edges = [(i, j) for i in range(n_subjects) for j in range(i + 1, n_subjects)]
-        coo_adj_matrix = array2adjacent_matrix(rFFA_patterns, weight_type,
+        coo_adj_matrix = array2adjacent_matrix(FFA_patterns, weight_type,
                                                weight_normalization=True, edges=edges)
 
         # show adjacent matrix image
@@ -349,12 +349,12 @@ if __name__ == '__main__':
     elif method == 'GN':
         labels_list = girvan_newman_community(graph, 200)
     elif method == 'HAC':
-        labels_list = hac_scipy(rFFA_patterns, range(2, 201), 'ward',
+        labels_list = hac_scipy(FFA_patterns, range(2, 201), 'ward',
                                 output=pjoin(subproject_dir, 'hac_dendrogram.png'))
     elif method == 'KM':
-        labels_list = k_means(rFFA_patterns, range(2, 201), 10)
+        labels_list = k_means(FFA_patterns, range(2, 20), 10)
     elif method == 'GS_KM':
-        labels_list, gaps, s, k_selected = gap_stat_mine(rFFA_patterns, range(1, 51))
+        labels_list, gaps, s, k_selected = gap_stat_mine(FFA_patterns, range(1, 51))
         assessments_dict['gap statistic'] = (gaps, s, k_selected)
     else:
         raise RuntimeError('The method-{} is not supported!'.format(method))
@@ -375,11 +375,11 @@ if __name__ == '__main__':
 
                 sub_dices = []
                 for label in range(1, max(labels) + 1):
-                    subgroup_rFFA_patterns = np.atleast_2d(maps[labels == label])[:, rFFA_vertices]
-                    subgroup_rFFA_patterns_mean = np.mean(subgroup_rFFA_patterns, 0)
+                    subgroup_FFA_patterns = np.atleast_2d(maps[labels == label])[:, FFA_vertices]
+                    subgroup_FFA_patterns_mean = np.mean(subgroup_FFA_patterns, 0)
 
-                    collection1 = np.where(subgroup_rFFA_patterns_mean > 2.3)[0]
-                    collection2s = [np.where(i > 2.3)[0] for i in subgroup_rFFA_patterns]
+                    collection1 = np.where(subgroup_FFA_patterns_mean > 2.3)[0]
+                    collection2s = [np.where(i > 2.3)[0] for i in subgroup_FFA_patterns]
                     tmp_dices = map(lambda c2: calc_overlap(collection1, c2), collection2s)
                     sub_dices.extend(tmp_dices)
                 assessments_dict[metric].append(sub_dices)
@@ -395,12 +395,12 @@ if __name__ == '__main__':
 
                 # https://stackoverflow.com/questions/19197715/scikit-learn-k-means-elbow-criterion
                 # http://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html#sklearn.metrics.silhouette_score
-                assessments_dict[metric].append(silhouette_score(rFFA_patterns, labels,
+                assessments_dict[metric].append(silhouette_score(FFA_patterns, labels,
                                                                  metric=weight_type[1], random_state=0))
 
             elif 'elbow' in metric:
                 tmp = metric.split('_')
-                assessment = elbow_score(rFFA_patterns, labels, metric=weight_type[1],
+                assessment = elbow_score(FFA_patterns, labels, metric=weight_type[1],
                                          type=(tmp[1], tmp[2]))
                 assessments_dict[metric].append(assessment)
 
@@ -418,7 +418,7 @@ if __name__ == '__main__':
     vline_plotter_holder = []
     for metric in assessment_metrics:
         # plot assessment curve
-        v_plotter = ClusteringVlineMoverPlotter(rFFA_patterns, labels_list, subject_ids, subproject_dir)
+        v_plotter = ClusteringVlineMoverPlotter(FFA_patterns, labels_list, subject_ids, subproject_dir)
 
         if metric0 == 'dice':
             y = np.mean(assessments_dict[metric0], 1)
