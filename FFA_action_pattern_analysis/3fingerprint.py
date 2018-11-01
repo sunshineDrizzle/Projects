@@ -15,11 +15,11 @@ if __name__ == '__main__':
                                     (20, 'PLACE-AVG'),
                                     (21, 'TOOL-AVG')])
     rois = ['r1_FFA_m', 'r2_FFA_p', 'r2_FFA_a', 'r3_FFA_p', 'r3_FFA_a']
-    roi2label = {'r1_FFA_m': '3',
-                 'r2_FFA_p': '1',
-                 'r2_FFA_a': '1',
-                 'r3_FFA_p': '2',
-                 'r3_FFA_a': '2'}
+    roi2label = {'r1_FFA_m': '3', 'l1_FFA_m': '2',
+                 'r2_FFA_p': '1', 'l2_FFA_p': '1',
+                 'r2_FFA_a': '1', 'l2_FFA_a': '1',
+                 'r3_FFA_p': '2', 'l3_FFA_p': '3',
+                 'r3_FFA_a': '2', 'l3_FFA_a': '3'}
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'

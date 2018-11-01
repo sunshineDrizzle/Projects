@@ -157,14 +157,13 @@ def explore_WM_Task_2bk_Face_Acc(behavior_dict, label):
 if __name__ == '__main__':
     from os.path import join as pjoin
     from matplotlib import pyplot as plt
+
     from commontool.algorithm.plot import auto_bar_width, show_bar_value
 
     # predefine some variates
     n_clusters = 6
-    working_dir = '/nfs/s2/userhome/chenxiayu/workingdir'
-    project_dir = pjoin(working_dir, 'study/rFFA_clustering')
-    subproject_dir = pjoin(project_dir, '1080_ward_regress')
-    n_clusters_dir = pjoin(subproject_dir, '{}clusters'.format(n_clusters))
+    project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/rFFA_clustering'
+    n_clusters_dir = pjoin(project_dir, '2mm_KM_init10_regress_right/{}clusters'.format(n_clusters))
 
     with open(pjoin(project_dir, 'data/S1200_behavior.csv')) as f:
         lines = f.read().splitlines()
