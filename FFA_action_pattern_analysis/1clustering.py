@@ -251,21 +251,21 @@ if __name__ == '__main__':
     print('Start: predefine some variates')
 
     # predefine parameters
-    method = 'GS_KM'  # 'HAC', 'KM', 'LV', 'GN' or 'GS_KM'
+    method = 'KM'  # 'HAC', 'KM', 'LV', 'GN' or 'GS_KM'
     weight_type = ('dissimilar', 'euclidean')
     # 'dice', 'modularity', 'silhouette', 'elbow_inner_centroid'
     # 'elbow_inner_pairwise', 'elbow_inter_centroid', 'elbow_inter_pairwise'
     if 'GS' in method:
         assessment_metrics = ('gap statistic',)
     else:
-        assessment_metrics = ('elbow_inner_standard',)
+        assessment_metrics = ('dice', 'elbow_inner_standard', 'modularity')
     assessments_dict = dict()
     for metric in assessment_metrics:
         assessments_dict[metric] = []
     clustering_thr = None  # a threshold used to cut FFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
     clustering_regress_mean = True  # If true, regress mean value from FFA_data
-    subproject_name = '2mm_KM_init10_regress'
+    subproject_name = '2mm_KM_init10_regress_right'
 
     is_graph_needed = False
     method_metric_box = assessment_metrics + (method,)
@@ -352,7 +352,7 @@ if __name__ == '__main__':
         labels_list = hac_scipy(FFA_patterns, range(2, 201), 'ward',
                                 output=pjoin(subproject_dir, 'hac_dendrogram.png'))
     elif method == 'KM':
-        labels_list = k_means(FFA_patterns, range(2, 20), 10)
+        labels_list = k_means(FFA_patterns, range(1, 51), 10)
     elif method == 'GS_KM':
         labels_list, gaps, s, k_selected = gap_stat_mine(FFA_patterns, range(1, 51))
         assessments_dict['gap statistic'] = (gaps, s, k_selected)

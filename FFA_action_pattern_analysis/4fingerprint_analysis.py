@@ -1,32 +1,33 @@
-if __name__ == '__main__':
-    import numpy as np
+import numpy as np
 
-    from os.path import join as pjoin
-    from matplotlib import pyplot as plt
-    from commontool.io.io import CsvReader
+from os.path import join as pjoin
+from matplotlib import pyplot as plt
+from commontool.io.io import CsvReader
 
-    # predefine some variates
-    # -----------------------
-    # predefine parameters
-    show_errbar = False
-    rois = ['r1_FFA_m', 'r2_FFA_p', 'r2_FFA_a', 'r3_FFA_p', 'r3_FFA_a']
-    roi2color = {'r1_FFA_m': 'k', 'l1_FFA_m': 'k',
-                 'r2_FFA_p': 'r', 'l2_FFA_p': 'r',
-                 'r2_FFA_a': 'y', 'l2_FFA_a': 'y',
-                 'r3_FFA_p': 'b', 'l3_FFA_p': 'b',
-                 'r3_FFA_a': 'g', 'l3_FFA_a': 'g'}
-    color2facecolor = {'b': 'blue',
-                       'r': 'red',
-                       'g': 'green',
-                       'y': 'yellow',
-                       'k': 'black'}
 
-    # predefine paths
-    project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    n_clusters_dir = pjoin(project_dir, '2mm_KM_init10_regress_right/3clusters')
-    fingerprint_files = pjoin(n_clusters_dir, '{}_func_fingerprint.csv')
-    # -----------------------
+# predefine some variates
+# -----------------------
+# predefine parameters
+rois = ['l1_FFA_m', 'l2_FFA_p', 'l2_FFA_a', 'l3_FFA_p', 'l3_FFA_a']
+roi2color = {'r1_FFA_m': 'k', 'l1_FFA_m': 'k',
+             'r2_FFA_p': 'r', 'l2_FFA_p': 'r',
+             'r2_FFA_a': 'y', 'l2_FFA_a': 'y',
+             'r3_FFA_p': 'b', 'l3_FFA_p': 'b',
+             'r3_FFA_a': 'g', 'l3_FFA_a': 'g'}
+color2facecolor = {'b': 'blue',
+                   'r': 'red',
+                   'g': 'green',
+                   'y': 'yellow',
+                   'k': 'black'}
 
+# predefine paths
+project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
+n_clusters_dir = pjoin(project_dir, '2mm_KM_init10_regress_left/3clusters')
+fingerprint_files = pjoin(n_clusters_dir, '{}_func_fingerprint.csv')
+# -----------------------
+
+
+def curve_plot(show_errbar=False):
     fig, ax = plt.subplots()
     is_first_loop = True
     for roi in rois:
@@ -64,3 +65,34 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     plt.show()
+
+
+def mds_plot():
+    from sklearn.manifold import MDS
+
+    X = []
+    for roi in rois:
+        fingerprint_file = fingerprint_files.format(roi)
+        reader = CsvReader(fingerprint_file)
+        fingerprints = np.array(reader.rows[1:], dtype=np.float64)
+        X.append(np.mean(fingerprints, axis=0))
+
+    X = np.array(X)
+    embedding = MDS()
+    X_transformed = embedding.fit_transform(X)
+
+    fig, ax = plt.subplots()
+    for idx, pos in enumerate(X_transformed):
+        ax.scatter(pos[0], pos[1], c=roi2color[rois[idx]], label=rois[idx])
+    ax.legend()
+    ax.tick_params(bottom=False, left=False,
+                   labelbottom=False, labelleft=False)
+    plt.show()
+
+
+def anova():
+    pass
+
+
+if __name__ == '__main__':
+    mds_plot()

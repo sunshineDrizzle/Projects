@@ -57,7 +57,7 @@ if __name__ == '__main__':
     # output copes
     cope_titles = interested_copes.values()
     for roi in cope_dict.keys():
-        with open(pjoin(n_clusters_dir, '{}_func_fingerprint_test.csv'.format(roi)), 'w+') as wf:
+        with open(pjoin(n_clusters_dir, '{}_func_fingerprint.csv'.format(roi)), 'w+') as wf:
             wf.write(','.join(cope_titles) + '\n')
             columns = []
             for title in cope_titles:

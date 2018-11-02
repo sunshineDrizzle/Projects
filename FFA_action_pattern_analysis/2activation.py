@@ -9,7 +9,7 @@ if __name__ == '__main__':
     # -----------------------
     # predefine parameters
     n_clusters = 3
-    subproject_name = '2mm_KM_init10_regress_left'
+    subproject_name = '2mm_KM_init10_regress_right'
     acti_thr = 2.3  # a threshold about significantly activated
     prob_thr = 0.8
     top_acti_percent = 0.1
