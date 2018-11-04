@@ -8,6 +8,7 @@ from commontool.io.io import CsvReader
 # predefine some variates
 # -----------------------
 # predefine parameters
+# rois = ['r1_FFA_m', 'r2_FFA_p', 'r2_FFA_a', 'r3_FFA_p', 'r3_FFA_a']
 rois = ['l1_FFA_m', 'l2_FFA_p', 'l2_FFA_a', 'l3_FFA_p', 'l3_FFA_a']
 roi2color = {'r1_FFA_m': 'k', 'l1_FFA_m': 'k',
              'r2_FFA_p': 'r', 'l2_FFA_p': 'r',
@@ -25,6 +26,19 @@ project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
 n_clusters_dir = pjoin(project_dir, '2mm_KM_init10_regress_left/3clusters')
 fingerprint_files = pjoin(n_clusters_dir, '{}_func_fingerprint.csv')
 # -----------------------
+
+
+def eta_squared(aov):
+    aov['eta_sq'] = 'NaN'
+    aov['eta_sq'] = aov[:-1]['sum_sq'] / sum(aov['sum_sq'])
+    return aov
+
+
+def omega_squared(aov):
+    mse = aov['sum_sq'][-1] / aov['df'][-1]
+    aov['omega_sq'] = 'NaN'
+    aov['omega_sq'] = (aov[:-1]['sum_sq'] - (aov[:-1]['df'] * mse)) / (sum(aov['sum_sq']) + mse)
+    return aov
 
 
 def curve_plot(show_errbar=False):
@@ -69,21 +83,39 @@ def curve_plot(show_errbar=False):
 
 def mds_plot():
     from sklearn.manifold import MDS
+    from collections import OrderedDict
 
-    X = []
+    only_mean = True
+
+    data = OrderedDict()
     for roi in rois:
         fingerprint_file = fingerprint_files.format(roi)
         reader = CsvReader(fingerprint_file)
         fingerprints = np.array(reader.rows[1:], dtype=np.float64)
-        X.append(np.mean(fingerprints, axis=0))
+        fingerprints_mean = np.atleast_2d(np.mean(fingerprints, axis=0))
+        if only_mean:
+            data[roi] = fingerprints_mean
+        else:
+            data[roi] = np.r_[fingerprints_mean, fingerprints]
 
-    X = np.array(X)
+    X = np.zeros((0, list(data.values())[0].shape[1]))
+    offsets = []
+    counts = []
+    for roi, fp in data.items():
+        offsets.append(X.shape[0])
+        counts.append(fp.shape[0])
+        X = np.r_[X, fp]
+    print(counts)
+
     embedding = MDS()
     X_transformed = embedding.fit_transform(X)
 
     fig, ax = plt.subplots()
-    for idx, pos in enumerate(X_transformed):
-        ax.scatter(pos[0], pos[1], c=roi2color[rois[idx]], label=rois[idx])
+    for idx, roi in enumerate(rois):
+        positions = X_transformed[offsets[idx]:offsets[idx]+counts[idx]]
+        ax.scatter(positions[0, 0], positions[0, 1], c=roi2color[roi], label=roi+'_mean', s=30)
+        if positions.shape[0] > 1:
+            ax.scatter(positions[1:, 0], positions[1:, 1], c=roi2color[roi], label=roi, s=1)
     ax.legend()
     ax.tick_params(bottom=False, left=False,
                    labelbottom=False, labelleft=False)
@@ -91,8 +123,33 @@ def mds_plot():
 
 
 def anova():
-    pass
+    import pandas as pd
+    from statsmodels.formula.api import ols
+    from statsmodels.stats.anova import anova_lm
+
+    columns = ['z_stat', 'roi', 'cope']
+    pd_dict = dict()
+    for c in columns:
+        pd_dict[c] = []
+    for roi in rois:
+        fingerprint_file = fingerprint_files.format(roi)
+        csv_reader = CsvReader(fingerprint_file)
+        csv_dict = csv_reader.to_dict()
+        for cope, z_stats in csv_dict.items():
+            pd_dict['roi'].extend([roi] * len(z_stats))
+            pd_dict['cope'].extend([cope] * len(z_stats))
+            pd_dict['z_stat'].extend(map(float, z_stats))
+    data = pd.DataFrame(pd_dict, columns=columns)
+
+    formula = 'z_stat ~ C(roi) + C(cope) + C(roi):C(cope)'
+    model = ols(formula, data).fit()
+    aov_table = anova_lm(model, typ=2)
+    eta_squared(aov_table)
+    omega_squared(aov_table)
+    print(aov_table)
 
 
 if __name__ == '__main__':
+    curve_plot()
     mds_plot()
+    anova()
