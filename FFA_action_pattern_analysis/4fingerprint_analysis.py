@@ -8,8 +8,8 @@ from commontool.io.io import CsvReader
 # predefine some variates
 # -----------------------
 # predefine parameters
-# rois = ['r1_FFA_m', 'r2_FFA_p', 'r2_FFA_a', 'r3_FFA_p', 'r3_FFA_a']
-rois = ['l1_FFA_m', 'l2_FFA_p', 'l2_FFA_a', 'l3_FFA_p', 'l3_FFA_a']
+rois = ['r1_FFA_m', 'r2_FFA_p', 'r2_FFA_a', 'r3_FFA_p', 'r3_FFA_a']
+# rois = ['l1_FFA_m', 'l2_FFA_p', 'l2_FFA_a', 'l3_FFA_p', 'l3_FFA_a']
 roi2color = {'r1_FFA_m': 'k', 'l1_FFA_m': 'k',
              'r2_FFA_p': 'r', 'l2_FFA_p': 'r',
              'r2_FFA_a': 'y', 'l2_FFA_a': 'y',
@@ -23,7 +23,7 @@ color2facecolor = {'b': 'blue',
 
 # predefine paths
 project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-n_clusters_dir = pjoin(project_dir, '2mm_KM_init10_regress_left/3clusters')
+n_clusters_dir = pjoin(project_dir, '2mm_KM_init10_regress_right/3clusters')
 fingerprint_files = pjoin(n_clusters_dir, '{}_func_fingerprint.csv')
 # -----------------------
 
@@ -122,7 +122,7 @@ def mds_plot():
     plt.show()
 
 
-def anova():
+def two_way_anova():
     import pandas as pd
     from statsmodels.formula.api import ols
     from statsmodels.stats.anova import anova_lm
@@ -149,7 +149,25 @@ def anova():
     print(aov_table)
 
 
+def ttest():
+    from scipy.stats import ttest_ind, ttest_1samp
+
+    roi2face_avg = dict()
+    for roi in rois:
+        fingerprint_file = fingerprint_files.format(roi)
+        csv_reader = CsvReader(fingerprint_file)
+        csv_dict = csv_reader.to_dict()
+        for cope in csv_dict.keys():
+            csv_dict[cope] = np.array(csv_dict[cope], np.float64)
+            print('{}_{}:'.format(roi, cope),
+                  ttest_1samp(csv_dict[cope], 0))
+        roi2face_avg[roi] = csv_dict['FACE-AVG']
+
+    for i, roi1 in enumerate(rois[:-1]):
+        for roi2 in rois[i+1:]:
+            print('{0}_face vs. {1}_face:'.format(roi1, roi2),
+                  ttest_ind(roi2face_avg[roi1], roi2face_avg[roi2]))
+
+
 if __name__ == '__main__':
-    curve_plot()
-    mds_plot()
-    anova()
+    ttest()
