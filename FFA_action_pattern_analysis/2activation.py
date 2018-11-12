@@ -8,8 +8,9 @@ if __name__ == '__main__':
     # predefine some variates
     # -----------------------
     # predefine parameters
-    n_clusters = 3
-    subproject_name = '2mm_KM_init10_regress_right'
+    n_clusters = 2
+    subproject_name = '2mm_KM_zscore_left'
+    brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
     acti_thr = 2.3  # a threshold about significantly activated
     prob_thr = 0.8
     top_acti_percent = 0.1
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     project_dir = pjoin(working_dir, 'study/FFA_clustering')
     subproject_dir = pjoin(project_dir, subproject_name)
     n_clusters_dir = pjoin(subproject_dir, '{}clusters'.format(n_clusters))
-    FFA_label = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    FFA_label = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
     FSR_maps = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     subject_labels_path = pjoin(n_clusters_dir, 'subject_labels')
     # -----------------------
@@ -27,7 +28,7 @@ if __name__ == '__main__':
     # get data
     FFA_vertices = nib.freesurfer.read_label(FFA_label)
     reader = CiftiReader(FSR_maps)
-    data = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
+    data = reader.get_data(brain_structure, True)
     FFA_data = data[:, FFA_vertices]
     with open(subject_labels_path) as f:
         subject_labels = np.array(f.read().split(' '))

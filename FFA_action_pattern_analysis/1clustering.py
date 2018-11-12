@@ -14,7 +14,7 @@ def hac_sklearn(data, n_clusters):
     return clustering.labels_
 
 
-def hac_scipy(data, cluster_nums, method, metric='euclidean', output=None):
+def hac_scipy(data, cluster_nums, method='ward', metric='euclidean', output=None):
     """
 
     :param data:
@@ -139,11 +139,16 @@ def gap_stat_mine(data, cluster_nums, ref_num=10, cluster_method=None):
         gap_statistic(data, cluster_nums, ref_num, cluster_method)
 
     x = np.arange(len(cluster_nums))
+    cluster_nums = np.array(cluster_nums)
     plt.figure()
     plt.plot(x, Wks, 'b.-')
     plt.xlabel('#subgroup')
     plt.ylabel(('W\u2096'))
-    plt.xticks(x, cluster_nums)
+    if len(x) > 20:
+        middle_idx = int(len(x) / 2)
+        plt.xticks(x[[0, middle_idx, -1]], cluster_nums[[0, middle_idx, -1]])
+    else:
+        plt.xticks(x, cluster_nums)
 
     Wks_log = np.log(Wks)
     plt.figure()
@@ -151,7 +156,11 @@ def gap_stat_mine(data, cluster_nums, ref_num=10, cluster_method=None):
     plt.plot(x, Wks_refs_log_mean, 'r.-')
     plt.xlabel('#subgroup')
     plt.ylabel('log(W\u2096)')
-    plt.xticks(x, cluster_nums)
+    if len(x) > 20:
+        middle_idx = int(len(x) / 2)
+        plt.xticks(x[[0, middle_idx, -1]], cluster_nums[[0, middle_idx, -1]])
+    else:
+        plt.xticks(x, cluster_nums)
 
     return labels_list, gaps, s, k_selected
 
@@ -198,12 +207,12 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
                 subgroup_ids = '\n'.join(subgroup_ids)
 
                 # output subjects IDs
-                with open(pjoin(n_clusters_dir, 'subjects{}_id'.format(label)), 'w+') as wf:
+                with open(pjoin(n_clusters_dir, 'subjects{}_id_test'.format(label)), 'w+') as wf:
                     wf.writelines(subgroup_ids)
 
             # output labels
             labels_out = ' '.join([str(label) for label in labels])
-            with open(pjoin(n_clusters_dir, 'subject_labels'), 'w+') as wf:
+            with open(pjoin(n_clusters_dir, 'subject_labels_test'), 'w+') as wf:
                 wf.write(labels_out)
 
             # show heatmap for rearranged data
@@ -237,10 +246,24 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
                     event.inaxes.set_xticklabels(xticklabels)
 
 
+def map2pattern(maps, clustering_thr=None, clustering_bin=False, clustering_zscore=False):
+    if clustering_thr is not None:
+        if clustering_bin:
+            patterns = (maps > clustering_thr).astype(np.int8)
+        else:
+            patterns = maps.copy()
+            patterns[maps <= clustering_thr] = clustering_thr
+    if clustering_zscore and not clustering_bin:
+        patterns = stats.zscore(maps, 1)
+
+    return patterns
+
+
 if __name__ == '__main__':
     import os
     import nibabel as nib
 
+    from scipy import stats
     from os.path import join as pjoin
     from commontool.io.io import CiftiReader
     from commontool.algorithm.tool import elbow_score
@@ -249,23 +272,24 @@ if __name__ == '__main__':
     # predefine some variates
     # -----------------------
     print('Start: predefine some variates')
-
     # predefine parameters
-    method = 'KM'  # 'HAC', 'KM', 'LV', 'GN' or 'GS_KM'
+    method = 'HAC'  # 'HAC', 'KM', 'LV', 'GN' or 'GS_KM', 'GS_HAC'
     weight_type = ('dissimilar', 'euclidean')
     # 'dice', 'modularity', 'silhouette', 'elbow_inner_centroid'
     # 'elbow_inner_pairwise', 'elbow_inter_centroid', 'elbow_inter_pairwise'
     if 'GS' in method:
         assessment_metrics = ('gap statistic',)
     else:
-        assessment_metrics = ('dice', 'elbow_inner_standard', 'modularity')
+        # assessment_metrics = ('dice', 'elbow_inner_standard', 'modularity')
+        assessment_metrics = ('elbow_inner_standard',)
     assessments_dict = dict()
     for metric in assessment_metrics:
         assessments_dict[metric] = []
     clustering_thr = None  # a threshold used to cut FFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
-    clustering_regress_mean = True  # If true, regress mean value from FFA_data
-    subproject_name = '2mm_KM_init10_regress_right'
+    clustering_zscore = True  # If true, do z-score on each subject's FFA pattern
+    subproject_name = '2mm_HAC_zscore'
+    # brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
 
     is_graph_needed = False
     method_metric_box = assessment_metrics + (method,)
@@ -277,7 +301,9 @@ if __name__ == '__main__':
     working_dir = '/nfs/s2/userhome/chenxiayu/workingdir'
     project_dir = pjoin(working_dir, 'study/FFA_clustering')
     subproject_dir = pjoin(project_dir, subproject_name)
-    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    # FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
+    lFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
+    rFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
 
     print('Finish: predefine some variates')
@@ -286,21 +312,23 @@ if __name__ == '__main__':
     # prepare data
     # -----------------------
     print('Start: prepare data')
-
     # prepare FFA patterns
-    FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
+    # FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
+    lFFA_vertices = nib.freesurfer.read_label(lFFA_label_path)
+    rFFA_vertices = nib.freesurfer.read_label(rFFA_label_path)
     maps_reader = CiftiReader(maps_path)
-    maps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
-    FFA_patterns = maps[:, FFA_vertices]
+    # maps = maps_reader.get_data(brain_structure, True)
+    lmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
+    rmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
+    # FFA_maps = maps[:, FFA_vertices]
+    lFFA_maps = lmaps[:, lFFA_vertices]
+    rFFA_maps = rmaps[:, rFFA_vertices]
+    FFA_maps = np.c_[lFFA_maps, rFFA_maps]
 
-    if clustering_thr is not None:
-        if clustering_bin:
-            FFA_patterns = (FFA_patterns > clustering_thr).astype(np.int8)
-        else:
-            FFA_patterns[FFA_patterns <= clustering_thr] = clustering_thr
-    if clustering_regress_mean and not clustering_bin:
-        FFA_pattern_means = np.atleast_2d(np.mean(FFA_patterns, 1)).T
-        FFA_patterns = FFA_patterns - FFA_pattern_means
+    # FFA_patterns = map2pattern(FFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    lFFA_patterns = map2pattern(lFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    rFFA_patterns = map2pattern(rFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
 
     # show FFA_patterns
     imshow(FFA_patterns, 'vertices', 'subjects', 'jet', 'activation')
@@ -308,7 +336,6 @@ if __name__ == '__main__':
     # prepare subject ids
     subject_ids = [name.split('_')[0] for name in maps_reader.map_names()]
     subject_ids = np.array(subject_ids)
-
     print('Finish: prepare data')
     # -----------------------
 
@@ -349,12 +376,15 @@ if __name__ == '__main__':
     elif method == 'GN':
         labels_list = girvan_newman_community(graph, 200)
     elif method == 'HAC':
-        labels_list = hac_scipy(FFA_patterns, range(2, 201), 'ward',
+        labels_list = hac_scipy(FFA_patterns, range(1, 51), 'ward',
                                 output=pjoin(subproject_dir, 'hac_dendrogram.png'))
     elif method == 'KM':
         labels_list = k_means(FFA_patterns, range(1, 51), 10)
     elif method == 'GS_KM':
         labels_list, gaps, s, k_selected = gap_stat_mine(FFA_patterns, range(1, 51))
+        assessments_dict['gap statistic'] = (gaps, s, k_selected)
+    elif method == 'GS_HAC':
+        labels_list, gaps, s, k_selected = gap_stat_mine(FFA_patterns, range(1, 51), cluster_method=hac_scipy)
         assessments_dict['gap statistic'] = (gaps, s, k_selected)
     else:
         raise RuntimeError('The method-{} is not supported!'.format(method))
@@ -374,8 +404,8 @@ if __name__ == '__main__':
                 from commontool.algorithm.tool import calc_overlap
 
                 sub_dices = []
-                for label in range(1, max(labels) + 1):
-                    subgroup_FFA_patterns = np.atleast_2d(maps[labels == label])[:, FFA_vertices]
+                for label in sorted(set(labels)):
+                    subgroup_FFA_patterns = np.atleast_2d(FFA_maps[labels == label])
                     subgroup_FFA_patterns_mean = np.mean(subgroup_FFA_patterns, 0)
 
                     collection1 = np.where(subgroup_FFA_patterns_mean > 2.3)[0]
@@ -422,16 +452,40 @@ if __name__ == '__main__':
 
         if metric0 == 'dice':
             y = np.mean(assessments_dict[metric0], 1)
-            std = np.std(assessments_dict[metric0], 1)
+            sem = stats.sem(assessments_dict[metric0], 1)
             v_plotter.axes[0].plot(x, y, 'b.-')
-            v_plotter.axes[0].fill_between(x, y-std, y+std, alpha=0.5)
+            v_plotter.axes[0].fill_between(x, y-sem, y+sem, alpha=0.5)
         elif 'elbow' in metric0:
             width = auto_bar_width(x)
             y1 = assessments_dict[metric0]
-            y2 = [-y1[i] + y1[i+1] for i in x[:-1]]
+            y2 = [y1[i] - y1[i+1] for i in x[:-1]]
+            y3 = [y2[i] - y2[i+1] for i in x[:-2]]
             # v_plotter.axes[0].bar(x, y1, width, color='cyan')
             v_plotter.axes[0].plot(x, y1, 'b.-')
-            # v_plotter.axes[0].plot(x[1:], y2, 'k.-')
+            fig2, ax2 = plt.subplots()
+            ax2.plot(x[:-1], y2, 'b.-')
+            ax2.set_title('assessment for #subgroups')
+            ax2.set_xlabel('#subgroups')
+            ax2.set_ylabel(metric0 + "'")
+            if len(x[:-1]) > 20:
+                middle_idx = int(len(x[:-1]) / 2)
+                ax2.set_xticks(x[:-1][[0, middle_idx, -1]])
+                ax2.set_xticklabels(x_labels[1:][[0, middle_idx, -1]])
+            else:
+                ax2.set_xticks(x[:-1])
+                ax2.set_xticklabels(x_labels[1:])
+            fig3, ax3 = plt.subplots()
+            ax3.plot(x[:-2], y3, 'b.-')
+            ax3.set_title('assessment for #subgroups')
+            ax3.set_xlabel('#subgroups')
+            ax3.set_ylabel(metric0 + "''")
+            if len(x[:-2]) > 20:
+                middle_idx = int(len(x[:-2]) / 2)
+                ax3.set_xticks(x[:-2][[0, middle_idx, -1]])
+                ax3.set_xticklabels(x_labels[1:-1][[0, middle_idx, -1]])
+            else:
+                ax3.set_xticks(x[:-2])
+                ax3.set_xticklabels(x_labels[1:-1])
         elif metric0 == 'gap statistic':
             v_plotter.axes[0].plot(x, assessments_dict[metric0][0], 'b.-')
             v_plotter.axes[0].fill_between(x, assessments_dict[metric0][0] - assessments_dict[metric0][1],
@@ -465,9 +519,9 @@ if __name__ == '__main__':
             v_plotter.add_twinx(0)
             if metric == 'dice':
                 y = np.mean(assessments_dict[metric], 1)
-                std = np.std(assessments_dict[metric], 1)
+                sem = stats.sem(assessments_dict[metric], 1)
                 v_plotter.axes_twin[0].plot(x, y, 'r.-')
-                v_plotter.axes_twin[0].fill_between(x, y - std, y + std, alpha=0.5)
+                v_plotter.axes_twin[0].fill_between(x, y - sem, y + sem, alpha=0.5)
             else:
                 v_plotter.axes_twin[0].plot(x, assessments_dict[metric], 'r.-')
 
