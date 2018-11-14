@@ -161,9 +161,18 @@ if __name__ == '__main__':
     from commontool.algorithm.plot import auto_bar_width, show_bar_value
 
     # predefine some variates
-    n_clusters = 6
-    project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/rFFA_clustering'
-    n_clusters_dir = pjoin(project_dir, '2mm_KM_init10_regress_right/{}clusters'.format(n_clusters))
+    n_clusters = 3
+    project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
+    n_clusters_dir = pjoin(project_dir, '2mm_KM_zscore_right/{}clusters'.format(n_clusters))
+    # n_clusters_dir = pjoin(project_dir, '4mm_ward_regress_right/{}clusters'.format(n_clusters))
+    subject_labels_file = pjoin(n_clusters_dir, 'subject_labels')
+    subjects_1080_file = pjoin(project_dir, 'data/HCP_face-avg/s2/subject_id')
+
+    with open(subject_labels_file) as rf:
+        subject_labels = np.array(rf.read().split(' '))
+
+    with open(subjects_1080_file) as rf:
+        subjects_1080 = np.array(rf.read().splitlines())
 
     with open(pjoin(project_dir, 'data/S1200_behavior.csv')) as f:
         lines = f.read().splitlines()
@@ -183,9 +192,10 @@ if __name__ == '__main__':
     for item in float_items:
         float_mean_dict[item] = []
 
-    for label in range(1, n_clusters+1):
-        with open(pjoin(n_clusters_dir, 'subjects{}_id'.format(label))) as f:
-            subgroup_ids = f.read().splitlines()
+    for label in sorted(set(subject_labels)):
+        # with open(pjoin(n_clusters_dir, 'subjects{}_id'.format(label))) as f:
+        #     subgroup_ids = f.read().splitlines()
+        subgroup_ids = subjects_1080[subject_labels == label]
 
         behavior_dict = get_behavior_dict(subject_dict, behavior_names, subgroup_ids)
 
@@ -264,7 +274,7 @@ if __name__ == '__main__':
     ax.spines['right'].set_visible(False)
     ax.set_title('1080 Gender')
     ax.set_ylabel('count')
-    plt.savefig(pjoin(n_clusters_dir, '1080_Gender.png'))
+    # plt.savefig(pjoin(n_clusters_dir, '1080_Gender.png'))
 
     x = np.arange(n_clusters)
     width = auto_bar_width(x, 2)

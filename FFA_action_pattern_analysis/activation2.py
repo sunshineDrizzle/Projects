@@ -9,7 +9,7 @@ if __name__ == '__main__':
     # -----------------------
     # predefine parameters
     n_clusters = 2
-    subproject_name = '2mm_KM_zscore_left'
+    subproject_name = '2mm_HAC_zscore'
     brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
     acti_thr = 2.3  # a threshold about significantly activated
     prob_thr = 0.8
@@ -79,15 +79,15 @@ if __name__ == '__main__':
             top_acti_ROIs[row, col] = 1
 
     # output data
-    save2nifti(pjoin(n_clusters_dir, 'mean_maps.nii.gz'), data_means)
-    save2nifti(pjoin(n_clusters_dir, 'prob_maps_z{}.nii.gz'.format(acti_thr)), data_probs)
+    save2nifti(pjoin(n_clusters_dir, 'lh_mean_maps.nii.gz'), data_means)
+    save2nifti(pjoin(n_clusters_dir, 'lh_prob_maps_z{}.nii.gz'.format(acti_thr)), data_probs)
     # save2nifti(pjoin(n_clusters_dir, 'max_num_map_z{}.nii.gz'.format(acti_thr)), max_num_map)
     # save2nifti(pjoin(n_clusters_dir, 'max_prob_map_z{}.nii.gz'.format(acti_thr)), max_prob_map)
     # save2nifti(pjoin(n_clusters_dir, 'top_prob_ROIs_z{}_p{}.nii.gz'.format(acti_thr, prob_thr)), top_prob_ROIs)
-    save2nifti(pjoin(n_clusters_dir, 'top_acti_ROIs_percent{}.nii.gz'.format(top_acti_percent * 100)), top_acti_ROIs)
+    save2nifti(pjoin(n_clusters_dir, 'lh_top_acti_ROIs_percent{}.nii.gz'.format(top_acti_percent * 100)), top_acti_ROIs)
 
     # output statistics
-    with open(pjoin(n_clusters_dir, 'statistics.csv'), 'w+') as f:
+    with open(pjoin(n_clusters_dir, 'lh_statistics.csv'), 'w+') as f:
         f.write(','.join(stats_table_titles) + '\n')
         lines = []
         for title in stats_table_titles:

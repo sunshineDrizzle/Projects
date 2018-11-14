@@ -197,22 +197,22 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
             # output
             # --------------
             data_rearranged = np.zeros((0, self.data.shape[1]))
-            for label in range(1, n_clusters+1):
+            for label in sorted(set(labels)):
                 # get subgroup data
                 subgroup_data = self.data[labels == label]
                 data_rearranged = np.r_[data_rearranged, subgroup_data]
 
-                # get subjects' IDs in a subgroup
-                subgroup_ids = self.subject_ids[labels == label]
-                subgroup_ids = '\n'.join(subgroup_ids)
-
-                # output subjects IDs
-                with open(pjoin(n_clusters_dir, 'subjects{}_id_test'.format(label)), 'w+') as wf:
-                    wf.writelines(subgroup_ids)
+                # # get subjects' IDs in a subgroup
+                # subgroup_ids = self.subject_ids[labels == label]
+                # subgroup_ids = '\n'.join(subgroup_ids)
+                #
+                # # output subjects IDs
+                # with open(pjoin(n_clusters_dir, 'subjects{}_id'.format(label)), 'w+') as wf:
+                #     wf.writelines(subgroup_ids)
 
             # output labels
             labels_out = ' '.join([str(label) for label in labels])
-            with open(pjoin(n_clusters_dir, 'subject_labels_test'), 'w+') as wf:
+            with open(pjoin(n_clusters_dir, 'subject_labels'), 'w+') as wf:
                 wf.write(labels_out)
 
             # show heatmap for rearranged data
@@ -273,7 +273,7 @@ if __name__ == '__main__':
     # -----------------------
     print('Start: predefine some variates')
     # predefine parameters
-    method = 'HAC'  # 'HAC', 'KM', 'LV', 'GN' or 'GS_KM', 'GS_HAC'
+    method = 'GS_HAC'  # 'HAC', 'KM', 'LV', 'GN' or 'GS_KM', 'GS_HAC'
     weight_type = ('dissimilar', 'euclidean')
     # 'dice', 'modularity', 'silhouette', 'elbow_inner_centroid'
     # 'elbow_inner_pairwise', 'elbow_inter_centroid', 'elbow_inter_pairwise'
@@ -282,14 +282,15 @@ if __name__ == '__main__':
     else:
         # assessment_metrics = ('dice', 'elbow_inner_standard', 'modularity')
         assessment_metrics = ('elbow_inner_standard',)
+        assessment_metrics = ('silhouette',)
     assessments_dict = dict()
     for metric in assessment_metrics:
         assessments_dict[metric] = []
     clustering_thr = None  # a threshold used to cut FFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
     clustering_zscore = True  # If true, do z-score on each subject's FFA pattern
-    subproject_name = '2mm_HAC_zscore'
-    # brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
+    subproject_name = '2mm_HAC_zscore_right_retest'
+    brain_structure = 'CIFTI_STRUCTURE_CORTEX_RIGHT'
 
     is_graph_needed = False
     method_metric_box = assessment_metrics + (method,)
@@ -301,9 +302,9 @@ if __name__ == '__main__':
     working_dir = '/nfs/s2/userhome/chenxiayu/workingdir'
     project_dir = pjoin(working_dir, 'study/FFA_clustering')
     subproject_dir = pjoin(project_dir, subproject_name)
-    # FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
-    lFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
-    rFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    # lFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
+    # rFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
 
     print('Finish: predefine some variates')
@@ -313,22 +314,22 @@ if __name__ == '__main__':
     # -----------------------
     print('Start: prepare data')
     # prepare FFA patterns
-    # FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
-    lFFA_vertices = nib.freesurfer.read_label(lFFA_label_path)
-    rFFA_vertices = nib.freesurfer.read_label(rFFA_label_path)
+    FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
+    # lFFA_vertices = nib.freesurfer.read_label(lFFA_label_path)
+    # rFFA_vertices = nib.freesurfer.read_label(rFFA_label_path)
     maps_reader = CiftiReader(maps_path)
-    # maps = maps_reader.get_data(brain_structure, True)
-    lmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
-    rmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
-    # FFA_maps = maps[:, FFA_vertices]
-    lFFA_maps = lmaps[:, lFFA_vertices]
-    rFFA_maps = rmaps[:, rFFA_vertices]
-    FFA_maps = np.c_[lFFA_maps, rFFA_maps]
+    maps = maps_reader.get_data(brain_structure, True)
+    # lmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
+    # rmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
+    FFA_maps = maps[:, FFA_vertices]
+    # lFFA_maps = lmaps[:, lFFA_vertices]
+    # rFFA_maps = rmaps[:, rFFA_vertices]
+    # FFA_maps = np.c_[lFFA_maps, rFFA_maps]
 
-    # FFA_patterns = map2pattern(FFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    lFFA_patterns = map2pattern(lFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    rFFA_patterns = map2pattern(rFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
+    FFA_patterns = map2pattern(FFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    # lFFA_patterns = map2pattern(lFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    # rFFA_patterns = map2pattern(rFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    # FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
 
     # show FFA_patterns
     imshow(FFA_patterns, 'vertices', 'subjects', 'jet', 'activation')
@@ -376,7 +377,7 @@ if __name__ == '__main__':
     elif method == 'GN':
         labels_list = girvan_newman_community(graph, 200)
     elif method == 'HAC':
-        labels_list = hac_scipy(FFA_patterns, range(1, 51), 'ward',
+        labels_list = hac_scipy(FFA_patterns, range(2, 51), 'ward',
                                 output=pjoin(subproject_dir, 'hac_dendrogram.png'))
     elif method == 'KM':
         labels_list = k_means(FFA_patterns, range(1, 51), 10)
@@ -384,7 +385,7 @@ if __name__ == '__main__':
         labels_list, gaps, s, k_selected = gap_stat_mine(FFA_patterns, range(1, 51))
         assessments_dict['gap statistic'] = (gaps, s, k_selected)
     elif method == 'GS_HAC':
-        labels_list, gaps, s, k_selected = gap_stat_mine(FFA_patterns, range(1, 51), cluster_method=hac_scipy)
+        labels_list, gaps, s, k_selected = gap_stat_mine(FFA_patterns, range(1, 61), cluster_method=hac_scipy)
         assessments_dict['gap statistic'] = (gaps, s, k_selected)
     else:
         raise RuntimeError('The method-{} is not supported!'.format(method))
