@@ -147,21 +147,21 @@ if __name__ == '__main__':
     print('Start: predefine some variates')
     # -----------------------
     # predefine parameters
-    clustering_method = 'HAC'  # 'HAC', 'KM', 'LV', 'GN'
+    clustering_method = 'KM'  # 'HAC', 'KM', 'LV', 'GN'
     clustering_thr = None  # a threshold used to cut FFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
     clustering_zscore = True  # If true, do z-score on each subject's FFA pattern
-    brain_structure = 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    # brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
     is_graph_needed = True if clustering_method in ('LV', 'GN') else False
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    clustering_dir = pjoin(project_dir, '2mm_HAC_zscore_right/clustering_results')
+    clustering_dir = pjoin(project_dir, '2mm_KM_zscore/clustering_results')
     if not os.path.exists(clustering_dir):
         os.makedirs(clustering_dir)
-    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
-    # lFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
-    # rFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    # FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
+    lFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
+    rFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     # -----------------------
     print('Finish: predefine some variates')
@@ -169,29 +169,25 @@ if __name__ == '__main__':
     print('Start: prepare data')
     # -----------------------
     # prepare FFA patterns
-    FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
-    # lFFA_vertices = nib.freesurfer.read_label(lFFA_label_path)
-    # rFFA_vertices = nib.freesurfer.read_label(rFFA_label_path)
+    # FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
+    lFFA_vertices = nib.freesurfer.read_label(lFFA_label_path)
+    rFFA_vertices = nib.freesurfer.read_label(rFFA_label_path)
     maps_reader = CiftiReader(maps_path)
-    maps = maps_reader.get_data(brain_structure, True)
-    # lmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
-    # rmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
-    FFA_maps = maps[:, FFA_vertices]
-    # lFFA_maps = lmaps[:, lFFA_vertices]
-    # rFFA_maps = rmaps[:, rFFA_vertices]
-    # FFA_maps = np.c_[lFFA_maps, rFFA_maps]
+    # maps = maps_reader.get_data(brain_structure, True)
+    lmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
+    rmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
+    # FFA_maps = maps[:, FFA_vertices]
+    lFFA_maps = lmaps[:, lFFA_vertices]
+    rFFA_maps = rmaps[:, rFFA_vertices]
+    FFA_maps = np.c_[lFFA_maps, rFFA_maps]
 
-    FFA_patterns = map2pattern(FFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    # lFFA_patterns = map2pattern(lFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    # rFFA_patterns = map2pattern(rFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    # FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
+    # FFA_patterns = map2pattern(FFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    lFFA_patterns = map2pattern(lFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    rFFA_patterns = map2pattern(rFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
 
     # show FFA_patterns
     imshow(FFA_patterns, 'vertices', 'subjects', 'jet', 'activation')
-
-    # prepare subject ids
-    subject_ids = [name.split('_')[0] for name in maps_reader.map_names()]
-    subject_ids = np.array(subject_ids)
     # -----------------------
     print('Finish: prepare data')
 

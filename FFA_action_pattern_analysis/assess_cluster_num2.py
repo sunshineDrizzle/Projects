@@ -77,8 +77,7 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
 
             # create soft link to corresponding labels' file
             labels_file = pjoin(clustering_dir, '{}subject_labels'.format(n_clusters))
-            os.system('cd {}'.format(n_clusters_dir))
-            os.system('ln -s {} subject_labels'.format(labels_file))
+            os.system('cd {} && ln -s {} subject_labels'.format(n_clusters_dir, labels_file))
 
             # show heatmap for rearranged data
             data_rearranged = np.zeros((0, self.data.shape[1]))
@@ -131,29 +130,31 @@ if __name__ == '__main__':
     clustering_thr = None  # a threshold used to cut FFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
     clustering_zscore = True  # If true, do z-score on each subject's FFA pattern
-    analysis_name = '2mm_HAC_zscore_right'
+    analysis_name = '2mm_HAC_zscore'
+    max_cluster_num = 20
     # dice, modularity, silhouette, gap statistic, elbow_inner_standard
     # elbow_inner_centroid, elbow_inner_pairwise, elbow_inter_centroid, elbow_inter_pairwise
     assessment_metric_pairs = [
-        ['dice', 'modularity'],
+        # ['dice', 'modularity'],
         ['elbow_inner_standard'],
-        ['silhouette'],
+        ['modularity'],
+        # ['silhouette'],
         # ['gap statistic']
     ]
     assessments_dict = dict()
     for metric_pair in assessment_metric_pairs:
         for metric in metric_pair:
             assessments_dict[metric] = []
-    brain_structure = 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    # brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
     is_graph_needed = True if 'modularity' in assessments_dict.keys() else False
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     analysis_dir = pjoin(project_dir, analysis_name)
     clustering_dir = pjoin(analysis_dir, 'clustering_results')
-    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
-    # lFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
-    # rFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    # FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
+    lFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
+    rFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     # -----------------------
     print('Finish: predefine some variates')
@@ -161,21 +162,21 @@ if __name__ == '__main__':
     print('Start: prepare data')
     # -----------------------
     # prepare FFA patterns
-    FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
-    # lFFA_vertices = nib.freesurfer.read_label(lFFA_label_path)
-    # rFFA_vertices = nib.freesurfer.read_label(rFFA_label_path)
+    # FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
+    lFFA_vertices = nib.freesurfer.read_label(lFFA_label_path)
+    rFFA_vertices = nib.freesurfer.read_label(rFFA_label_path)
     maps_reader = CiftiReader(maps_path)
-    maps = maps_reader.get_data(brain_structure, True)
-    # lmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
-    # rmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
-    FFA_maps = maps[:, FFA_vertices]
-    # lFFA_maps = lmaps[:, lFFA_vertices]
-    # rFFA_maps = rmaps[:, rFFA_vertices]
-    # FFA_maps = np.c_[lFFA_maps, rFFA_maps]
-    FFA_patterns = map2pattern(FFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    # lFFA_patterns = map2pattern(lFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    # rFFA_patterns = map2pattern(rFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    # FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
+    # maps = maps_reader.get_data(brain_structure, True)
+    lmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
+    rmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
+    # FFA_maps = maps[:, FFA_vertices]
+    lFFA_maps = lmaps[:, lFFA_vertices]
+    rFFA_maps = rmaps[:, rFFA_vertices]
+    FFA_maps = np.c_[lFFA_maps, rFFA_maps]
+    # FFA_patterns = map2pattern(FFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    lFFA_patterns = map2pattern(lFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    rFFA_patterns = map2pattern(rFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+    FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
     # -----------------------
     print('Finish: prepare data')
 
@@ -198,11 +199,13 @@ if __name__ == '__main__':
     for labels_file in labels_files:
         labels_list.append(np.array(open(labels_file).read().split(' '), dtype=np.uint16))
     labels_list.sort(key=lambda x: len(set(x)))
+    cluster_nums = np.array([len(set(labels)) for labels in labels_list])
+    end_idx = np.where(cluster_nums > max_cluster_num)[0][0]
+    labels_list = labels_list[:end_idx]
+    cluster_nums = cluster_nums[:end_idx]
     n_labels = len(labels_list)
-    cluster_nums = []
     for idx, labels in enumerate(labels_list):
         labels_uniq = sorted(set(labels))
-        cluster_nums.append(len(labels_uniq))
         for metric in assessments_dict.keys():
             if metric == 'dice':
                 from commontool.algorithm.tool import calc_overlap
@@ -262,7 +265,7 @@ if __name__ == '__main__':
         assessments_dict['gap statistic'] = (gaps, s, k_selected)
 
     x = np.arange(n_labels)
-    x_labels = np.array(cluster_nums)
+    x_labels = cluster_nums
     vline_plotter_holder = []
     for metric_pair in assessment_metric_pairs:
         # plot assessment curve
