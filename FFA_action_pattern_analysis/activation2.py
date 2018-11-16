@@ -1,4 +1,5 @@
 if __name__ == '__main__':
+    import os
     import numpy as np
     import nibabel as nib
 
@@ -99,16 +100,19 @@ if __name__ == '__main__':
                 top_acti_ROIs[row, col] = 1
 
         # output maps
-        save2nifti(pjoin(cluster_num_dir, '{}_mean_maps.nii.gz'.format(hemi)), mean_maps)
-        save2nifti(pjoin(cluster_num_dir, '{}_prob_maps_z{}.nii.gz'.format(hemi, acti_thr)), prob_maps)
-        # save2nifti(pjoin(cluster_num_dir, 'max_num_map_z{}.nii.gz'.format(acti_thr)), max_num_map)
-        # save2nifti(pjoin(cluster_num_dir, 'max_prob_map_z{}.nii.gz'.format(acti_thr)), max_prob_map)
-        # save2nifti(pjoin(cluster_num_dir, 'top_prob_ROIs_z{}_p{}.nii.gz'.format(acti_thr, prob_thr)), top_prob_ROIs)
-        save2nifti(pjoin(cluster_num_dir, '{}_top_acti_ROIs_percent{}.nii.gz'.format(hemi, top_acti_percent * 100)), top_acti_ROIs)
-        save2nifti(pjoin(cluster_num_dir, '{}_zscore_mean_maps.nii.gz'.format(hemi)), zscore_mean_maps)
+        activation_dir = pjoin(cluster_num_dir, 'activation')
+        if not os.path.exists(activation_dir):
+            os.makedirs(activation_dir)
+        save2nifti(pjoin(activation_dir, '{}_mean_maps.nii.gz'.format(hemi)), mean_maps)
+        save2nifti(pjoin(activation_dir, '{}_prob_maps_z{}.nii.gz'.format(hemi, acti_thr)), prob_maps)
+        # save2nifti(pjoin(activation_dir, 'max_num_map_z{}.nii.gz'.format(acti_thr)), max_num_map)
+        # save2nifti(pjoin(activation_dir, 'max_prob_map_z{}.nii.gz'.format(acti_thr)), max_prob_map)
+        # save2nifti(pjoin(activation_dir, 'top_prob_ROIs_z{}_p{}.nii.gz'.format(acti_thr, prob_thr)), top_prob_ROIs)
+        save2nifti(pjoin(activation_dir, '{}_top_acti_ROIs_percent{}.nii.gz'.format(hemi, top_acti_percent * 100)), top_acti_ROIs)
+        save2nifti(pjoin(activation_dir, '{}_zscore_mean_maps.nii.gz'.format(hemi)), zscore_mean_maps)
 
         # output statistics
-        with open(pjoin(cluster_num_dir, '{}_statistics.csv'.format(hemi)), 'w+') as f:
+        with open(pjoin(activation_dir, '{}_statistics.csv'.format(hemi)), 'w+') as f:
             f.write(','.join(stats_table_titles) + '\n')
             lines = []
             for title in stats_table_titles:
