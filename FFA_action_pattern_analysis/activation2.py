@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    cluster_num_dirs = pjoin(project_dir, '2mm_KM_zscore/{}clusters')
+    cluster_num_dirs = pjoin(project_dir, '2mm_HAC_zscore/{}clusters')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     if hemi == 'lh':
         brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
@@ -87,6 +87,7 @@ if __name__ == '__main__':
             subgroup_FFA_patterns_mean = np.atleast_2d(np.mean(subgroup_FFA_patterns, 0))
             zscore_mean_map = np.ones((1, maps.shape[1])) * np.min(subgroup_FFA_patterns_mean)
             zscore_mean_map[:, FFA_vertices] = subgroup_FFA_patterns_mean
+            zscore_mean_maps = np.r_[zscore_mean_maps, zscore_mean_map]
 
         max_num_map = np.argmax(num_maps, 0) + 1
         max_prob_map = np.argmax(prob_maps, 0) + 1
@@ -103,21 +104,21 @@ if __name__ == '__main__':
         activation_dir = pjoin(cluster_num_dir, 'activation')
         if not os.path.exists(activation_dir):
             os.makedirs(activation_dir)
-        save2nifti(pjoin(activation_dir, '{}_mean_maps.nii.gz'.format(hemi)), mean_maps)
-        save2nifti(pjoin(activation_dir, '{}_prob_maps_z{}.nii.gz'.format(hemi, acti_thr)), prob_maps)
+        # save2nifti(pjoin(activation_dir, '{}_mean_maps.nii.gz'.format(hemi)), mean_maps)
+        # save2nifti(pjoin(activation_dir, '{}_prob_maps_z{}.nii.gz'.format(hemi, acti_thr)), prob_maps)
         # save2nifti(pjoin(activation_dir, 'max_num_map_z{}.nii.gz'.format(acti_thr)), max_num_map)
         # save2nifti(pjoin(activation_dir, 'max_prob_map_z{}.nii.gz'.format(acti_thr)), max_prob_map)
         # save2nifti(pjoin(activation_dir, 'top_prob_ROIs_z{}_p{}.nii.gz'.format(acti_thr, prob_thr)), top_prob_ROIs)
-        save2nifti(pjoin(activation_dir, '{}_top_acti_ROIs_percent{}.nii.gz'.format(hemi, top_acti_percent * 100)), top_acti_ROIs)
+        # save2nifti(pjoin(activation_dir, '{}_top_acti_ROIs_percent{}.nii.gz'.format(hemi, top_acti_percent * 100)), top_acti_ROIs)
         save2nifti(pjoin(activation_dir, '{}_zscore_mean_maps.nii.gz'.format(hemi)), zscore_mean_maps)
 
         # output statistics
-        with open(pjoin(activation_dir, '{}_statistics.csv'.format(hemi)), 'w+') as f:
-            f.write(','.join(stats_table_titles) + '\n')
-            lines = []
-            for title in stats_table_titles:
-                lines.append(stats_table_content[title])
-            for line in zip(*lines):
-                f.write(','.join(line) + '\n')
+        # with open(pjoin(activation_dir, '{}_statistics.csv'.format(hemi)), 'w+') as f:
+        #     f.write(','.join(stats_table_titles) + '\n')
+        #     lines = []
+        #     for title in stats_table_titles:
+        #         lines.append(stats_table_content[title])
+        #     for line in zip(*lines):
+        #         f.write(','.join(line) + '\n')
 
         print('{}clusters: done'.format(cluster_num))

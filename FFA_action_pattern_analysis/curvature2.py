@@ -8,12 +8,12 @@ if __name__ == '__main__':
     # predefine some variates
     # -----------------------
     # predefine parameters
-    cluster_nums = range(1, 21)
+    cluster_nums = [1, 2, 3]
     hemi = 'rh'
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    cluster_num_dirs = pjoin(project_dir, '2mm_KM_zscore/{}clusters')
+    cluster_num_dirs = pjoin(project_dir, '2mm_HAC_zscore/{}clusters')
     if hemi == 'lh':
         brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
     elif hemi == 'rh':
@@ -50,7 +50,7 @@ if __name__ == '__main__':
         curv_dir = pjoin(cluster_num_dir, 'curvature')
         if not os.path.exists(curv_dir):
             os.makedirs(curv_dir)
-        save2nifti(pjoin(curv_dir, '{}_curv_mean_maps.nii.gz'.format(hemi)), curv_mean_maps)
-        # save2nifti(pjoin(curv_dir, '{}_sulc_prob_maps.nii.gz'.format(hemi)), sulc_prob_maps)
+        # save2nifti(pjoin(curv_dir, '{}_curv_mean_maps.nii.gz'.format(hemi)), curv_mean_maps)
+        save2nifti(pjoin(curv_dir, '{}_sulc_prob_maps.nii.gz'.format(hemi)), sulc_prob_maps)
 
         print('{}clusters: done'.format(cluster_num))
