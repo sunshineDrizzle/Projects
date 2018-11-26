@@ -5,7 +5,7 @@ from scipy import stats
 from commontool.io.io import CiftiReader
 
 
-def PA_plot(src_file, brain_structures, PAs, subject_labels, axes, color, item, zscore):
+def PA_plot(src_file, brain_structures, PAs, subject_labels, axes, color, item, zscore, item0_ys):
 
     reader = CiftiReader(src_file)
     for col in range(2):
@@ -21,6 +21,14 @@ def PA_plot(src_file, brain_structures, PAs, subject_labels, axes, color, item, 
             axes[row, col].errorbar(x, y, yerr=sem, color=color, label=item)
             axes[row, col].set_title(label)
 
+            if item0_ys[0] is '':
+                item0_ys[1][row, col] = y
+            else:
+                print("({0}, {1}) -- corr({2}, {3}): {4}".format(row, col, item0_ys[0], item,
+                                                                 stats.pearsonr(item0_ys[1][row, col], y)))
+    if item0_ys[0] is '':
+        item0_ys[0] = item
+
 
 if __name__ == '__main__':
     import nibabel as nib
@@ -30,9 +38,15 @@ if __name__ == '__main__':
     items = [
         'activation',
         # 'curvature',
-        'thickness',
-        # 'myelin'
+        # 'thickness',
+        'myelin'
     ]
+    item2color = {
+        'activation': 'y',
+        'curvature': 'r',
+        'thickness': 'g',
+        'myelin': 'b'
+    }
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     cluster_num_dir = pjoin(project_dir, '2mm_KM_zscore/{}clusters'.format(cluster_num))
@@ -51,6 +65,7 @@ if __name__ == '__main__':
 
     PAs = [lh_PA, rh_PA]
     brain_structures = ['CIFTI_STRUCTURE_CORTEX_LEFT', 'CIFTI_STRUCTURE_CORTEX_RIGHT']
+    item0_ys = ['', np.zeros_like(axes, dtype=object)]
     for item in items:
         if item == 'pattern':
             lh_src_file = pjoin(cluster_num_dir, 'activation/lh_zscore_mean_maps.nii.gz')
@@ -58,20 +73,18 @@ if __name__ == '__main__':
             lmaps = nib.load(lh_src_file).get_data()
             rmaps = nib.load(rh_src_file).get_data()
             pass
-        elif item == 'activation':
+            continue
+        if item == 'activation':
             src_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-            PA_plot(src_file, brain_structures, PAs, subject_labels, axes, 'y', item, True)
         elif item == 'curvature':
             src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200.1080.curvature_MSMAll.32k_fs_LR.dscalar.nii')
-            PA_plot(src_file, brain_structures, PAs, subject_labels, axes, 'r', item, True)
         elif item == 'thickness':
             src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_thickness_MSMAll_32k_fs_LR.dscalar.nii')
-            PA_plot(src_file, brain_structures, PAs, subject_labels, axes, 'g', item, True)
         elif item == 'myelin':
             src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_MyelinMap_BC_MSMAll_32k_fs_LR.dscalar.nii')
-            PA_plot(src_file, brain_structures, PAs, subject_labels, axes, 'b', item, True)
         else:
             raise RuntimeError("no such item: {}".format(item))
+        PA_plot(src_file, brain_structures, PAs, subject_labels, axes, item2color[item], item, True, item0_ys)
 
     for row in range(axes.shape[0]):
         for col in range(axes.shape[1]):
