@@ -37,8 +37,8 @@ if __name__ == '__main__':
     cluster_num = 3
     items = [
         'activation',
-        # 'curvature',
-        # 'thickness',
+        'curvature',
+        'thickness',
         'myelin'
     ]
     item2color = {
