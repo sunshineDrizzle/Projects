@@ -127,17 +127,17 @@ if __name__ == '__main__':
     # -----------------------
     # predefine parameters
     weight_type = ('dissimilar', 'euclidean')
-    clustering_thr = None  # a threshold used to cut FFA_data before clustering (default: None)
+    clustering_thr = 2.3  # a threshold used to cut FFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
     clustering_zscore = True  # If true, do z-score on each subject's FFA pattern
-    analysis_name = '2mm_KM_zscore'
+    analysis_name = '2mm_KM_thr2.3_zscore'
     max_cluster_num = 20
     # dice, modularity, silhouette, gap statistic, elbow_inner_standard
     # elbow_inner_centroid, elbow_inner_pairwise, elbow_inter_centroid, elbow_inter_pairwise
     assessment_metric_pairs = [
         # ['dice', 'modularity'],
         ['elbow_inner_standard'],
-        ['modularity'],
+        # ['modularity'],
         # ['silhouette'],
         # ['gap statistic']
     ]

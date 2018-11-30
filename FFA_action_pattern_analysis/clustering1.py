@@ -148,7 +148,7 @@ if __name__ == '__main__':
     # -----------------------
     # predefine parameters
     clustering_method = 'KM'  # 'HAC', 'KM', 'LV', 'GN'
-    clustering_thr = None  # a threshold used to cut FFA_data before clustering (default: None)
+    clustering_thr = 2.3  # a threshold used to cut FFA_data before clustering (default: None)
     clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
     clustering_zscore = True  # If true, do z-score on each subject's FFA pattern
     # brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    clustering_dir = pjoin(project_dir, '2mm_KM_zscore/clustering_results')
+    clustering_dir = pjoin(project_dir, '2mm_KM_thr2.3_zscore/clustering_results')
     if not os.path.exists(clustering_dir):
         os.makedirs(clustering_dir)
     # FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
