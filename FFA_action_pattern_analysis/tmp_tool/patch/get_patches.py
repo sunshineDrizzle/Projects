@@ -1,20 +1,50 @@
+from community import best_partition
+from commontool.algorithm.graph import connectivity_grow
+
+
+def get_patch_by_crg(vertices, edge_list):
+    patches = []
+    while vertices:
+        seed = vertices.pop()
+        patch = connectivity_grow([[seed]], edge_list)[0]
+        patches.append(list(patch))
+        vertices.difference_update(patch)
+
+    return patches
+
+
+def get_patch_by_LV(graph):
+    partition = best_partition(graph)
+    patches_dict = dict()
+    for label in partition.values():
+        patches_dict[label] = []
+    for vtx, label in partition.items():
+        patches_dict[label].append(vtx)
+    patches = [patches_dict[label] for label in sorted(patches_dict.keys())]
+
+    return patches
+
+
 if __name__ == '__main__':
     import os
     import numpy as np
     import nibabel as nib
 
+    from networkx import Graph
     from os.path import join as pjoin
+    from scipy.spatial.distance import pdist
     from commontool.io.io import CiftiReader, GiftiReader, save2nifti
-    from commontool.algorithm.graph import connectivity_grow
     from commontool.algorithm.triangular_mesh import get_n_ring_neighbor
 
     threshold = 2.3
+    method = 'LV_weighted'  # crg, LV_weighted, LV_unweighted
+
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     lFFA_label_file = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm_15.label')
     rFFA_label_file = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm_15.label')
     maps_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     subject_ids_file = pjoin(project_dir, 'data/HCP_face-avg/s2/subject_id')
-    patch_dir = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15')
+    patch_dir = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/{}'.format(method))
     if not os.path.exists(patch_dir):
         os.makedirs(patch_dir)
 
@@ -37,47 +67,84 @@ if __name__ == '__main__':
     lFFA_patch_stats = []
     for idx, lmap in enumerate(lmaps):
         patch_stat = [subject_ids[idx]]
-
         vertices_thr = np.where(lmap > threshold)[0]
         vertices_thr_FFA = lFFA_vertices.intersection(vertices_thr)
         mask = np.zeros(g_reader_l.coords.shape[0])
         mask[list(vertices_thr_FFA)] = 1
         edge_list = get_n_ring_neighbor(g_reader_l.faces, mask=mask)
-        patch_num = 0
-        patch_sizes = []
-        while vertices_thr_FFA:
-            patch_num += 1
-            seed = vertices_thr_FFA.pop()
-            patch = connectivity_grow([[seed]], edge_list)[0]
-            patch_sizes.append(str(len(patch)))
-            lFFA_patch_maps[idx, list(patch)] = patch_num
-            vertices_thr_FFA.difference_update(patch)
-        patch_stat.append(str(patch_num))
-        patch_stat.extend(patch_sizes)
+
+        if method == 'crg':
+            patches = get_patch_by_crg(vertices_thr_FFA, edge_list)
+        elif 'LV' in method:
+            graph = Graph()
+            graph.add_nodes_from(vertices_thr_FFA)
+            edges = [(vtx, vtx_neighbor) for vtx in vertices_thr_FFA for vtx_neighbor in edge_list[vtx]]
+            w = method.split('_')[1]
+            if w == 'weighted':
+                edge_data = [pdist(np.array([[lmap[i]], [lmap[j]]]))[0] for i, j in edges]
+                max_dissimilar = np.max(edge_data)
+                min_dissimilar = np.min(edge_data)
+                edge_data = [(max_dissimilar - dist) / (max_dissimilar - min_dissimilar) for dist in edge_data]
+                edges = np.array(edges)
+                graph.add_weighted_edges_from(zip(edges[:, 0], edges[:, 1], edge_data))
+            elif w == 'unweighted':
+                graph.add_edges_from(edges)
+            else:
+                raise RuntimeError("invalid method: {}".format(method))
+            patches = get_patch_by_LV(graph)
+        else:
+            raise RuntimeError("the method - {} is not supported at present!".format(method))
+
+        for label, patch in enumerate(patches, 1):
+            lFFA_patch_maps[idx, patch] = label
+        patch_stat.append(str(len(patches)))
+        patch_stat.extend([str(len(patch)) for patch in patches])
         lFFA_patch_stats.append(','.join(patch_stat))
+
+        print(idx/lmaps.shape[0])
 
     rFFA_patch_maps = np.zeros_like(rmaps)
     rFFA_patch_stats = []
     for idx, rmap in enumerate(rmaps):
         patch_stat = [subject_ids[idx]]
-
         vertices_thr = np.where(rmap > threshold)[0]
         vertices_thr_FFA = rFFA_vertices.intersection(vertices_thr)
         mask = np.zeros(g_reader_r.coords.shape[0])
         mask[list(vertices_thr_FFA)] = 1
         edge_list = get_n_ring_neighbor(g_reader_r.faces, mask=mask)
-        patch_num = 0
-        patch_sizes = []
-        while vertices_thr_FFA:
-            patch_num += 1
-            seed = vertices_thr_FFA.pop()
-            patch = connectivity_grow([[seed]], edge_list)[0]
-            patch_sizes.append(str(len(patch)))
-            rFFA_patch_maps[idx, list(patch)] = patch_num
-            vertices_thr_FFA.difference_update(patch)
-        patch_stat.append(str(patch_num))
-        patch_stat.extend(patch_sizes)
+
+        if method == 'crg':
+            patches = get_patch_by_crg(vertices_thr_FFA, edge_list)
+        elif 'LV' in method:
+            from networkx import Graph
+            from scipy.spatial.distance import pdist
+
+            graph = Graph()
+            graph.add_nodes_from(vertices_thr_FFA)
+            edges = [(vtx, vtx_neighbor) for vtx in vertices_thr_FFA for vtx_neighbor in edge_list[vtx]]
+            w = method.split('_')[1]
+            if w == 'weighted':
+                edge_data = [pdist(np.array([[rmap[i]], [rmap[j]]]))[0] for i, j in edges]
+                max_dissimilar = np.max(edge_data)
+                min_dissimilar = np.min(edge_data)
+                edge_data = [(max_dissimilar - dist) / (max_dissimilar - min_dissimilar) for dist in edge_data]
+                edges = np.array(edges)
+                graph.add_weighted_edges_from(zip(edges[:, 0], edges[:, 1], edge_data))
+            elif w == 'unweighted':
+                graph.add_edges_from(edges)
+            else:
+                raise RuntimeError("invalid method: {}".format(method))
+            patches = get_patch_by_LV(graph)
+        else:
+            raise RuntimeError("the method - {} is not supported at present!".format(method))
+
+        for label, patch in enumerate(patches, 1):
+            rFFA_patch_maps[idx, patch] = label
+        patch_stat.append(str(len(patches)))
+        patch_stat.extend([str(len(patch)) for patch in patches])
         rFFA_patch_stats.append(','.join(patch_stat))
+
+        print(idx/rmaps.shape[0])
 
     save2nifti(pjoin(patch_dir, 'lFFA_patch_maps_thr{}.nii.gz'.format(threshold)), lFFA_patch_maps)
     save2nifti(pjoin(patch_dir, 'rFFA_patch_maps_thr{}.nii.gz'.format(threshold)), rFFA_patch_maps)
