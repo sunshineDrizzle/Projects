@@ -147,16 +147,16 @@ if __name__ == '__main__':
     print('Start: predefine some variates')
     # -----------------------
     # predefine parameters
-    clustering_method = 'KM'  # 'HAC', 'KM', 'LV', 'GN'
+    clustering_method = 'HAC_single_dice'  # 'HAC_average_dice', 'KM', 'LV', 'GN'
     clustering_thr = 2.3  # a threshold used to cut FFA_data before clustering (default: None)
-    clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
-    clustering_zscore = True  # If true, do z-score on each subject's FFA pattern
+    clustering_bin = True  # If true, binarize FFA_data according to clustering_thr
+    clustering_zscore = False  # If true, do z-score on each subject's FFA pattern
     # brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
     is_graph_needed = True if clustering_method in ('LV', 'GN') else False
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    clustering_dir = pjoin(project_dir, '2mm_KM_thr2.3_zscore/clustering_results')
+    clustering_dir = pjoin(project_dir, '2mm_{}_thr2.3_bin/clustering_results'.format(clustering_method))
     if not os.path.exists(clustering_dir):
         os.makedirs(clustering_dir)
     # FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
@@ -209,8 +209,9 @@ if __name__ == '__main__':
         labels_list = louvain_community(graph)
     elif clustering_method == 'GN':
         labels_list = girvan_newman_community(graph, 50)
-    elif clustering_method == 'HAC':
-        labels_list = hac_scipy(FFA_patterns, range(1, 51), 'ward',
+    elif 'HAC' in clustering_method:
+        values = clustering_method.split('_')
+        labels_list = hac_scipy(FFA_patterns, range(1, 51), method=values[1], metric=values[2],
                                 output=pjoin(clustering_dir, 'hac_dendrogram.png'))
     elif clustering_method == 'KM':
         labels_list = k_means(FFA_patterns, range(1, 51), 10)
