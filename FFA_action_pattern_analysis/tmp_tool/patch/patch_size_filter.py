@@ -7,22 +7,36 @@ if __name__ == '__main__':
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     patch_dir = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/LV_unweighted')
-    patch_file = pjoin(patch_dir, 'rFFA_patch_maps_thr2.3.nii.gz')
-    patch_file_filtered = pjoin(patch_dir, 'rFFA_patch_maps_thr2.3_lt5.nii.gz')
+    patch_file = pjoin(patch_dir, 'lFFA_patch_maps.nii.gz')
+    patch_file_filtered = pjoin(patch_dir, 'lFFA_patch_maps_lt5.nii.gz')
+    stat_file = pjoin(patch_dir, 'lFFA_patch_stats_lt5')
+    subject_ids_file = pjoin(project_dir, 'data/HCP_face-avg/s2/subject_id')
+    with open(subject_ids_file) as rf:
+        subject_ids = rf.read().splitlines()
 
     patch_maps = nib.load(patch_file).get_data()
     patch_maps_filtered = np.zeros_like(patch_maps)
+    patch_stats = []
     label_new = 0
     for row in range(patch_maps.shape[0]):
         labels = np.unique(patch_maps[row])
+        patch_stat = [subject_ids[row]]
+        patch_sizes = []
         for label in labels:
             if label == 0:
                 continue
             vertices = np.where(patch_maps[row] == label)[0]
-            if len(vertices) > 5:
+            size = len(vertices)
+            if size > 5:
                 label_new += 1
+                patch_sizes.append(str(size))
                 patch_maps_filtered[row, vertices] = label_new
+        patch_stat.append(str(label_new))
+        patch_stat.extend(patch_sizes)
+        patch_stats.append(','.join(patch_stat))
+        label_new = 0
 
     header = nib.Nifti2Header()
     header['descrip'] = 'FreeROI label'
     save2nifti(patch_file_filtered, patch_maps_filtered, header=header)
+    open(stat_file, 'w+').writelines('\n'.join(patch_stats))
