@@ -8,10 +8,10 @@ if __name__ == '__main__':
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     acti_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     patch_dir = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/LV_unweighted')
-    patch_file = pjoin(patch_dir, 'rFFA_patch_maps_thr2.3.nii.gz')
-    max_maps_file = pjoin(patch_dir, 'rFFA_max_maps_thr2.3.nii.gz')
-    prob_max_map_file = pjoin(patch_dir, 'rFFA_prob_max_map_thr2.3.nii.gz')
-    brain_structure = 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    patch_file = pjoin(patch_dir, 'lFFA_patch_maps_thr2.3_lt5.nii.gz')
+    max_maps_file = pjoin(patch_dir, 'lFFA_max_maps_thr2.3_lt5.nii.gz')
+    prob_max_map_file = pjoin(patch_dir, 'lFFA_prob_max_map_thr2.3_lt5.nii.gz')
+    brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
 
     acti_maps = CiftiReader(acti_file).get_data(brain_structure, True)
     patch_maps = nib.load(patch_file).get_data()
@@ -28,5 +28,7 @@ if __name__ == '__main__':
             max_maps[row, max_idx] = label
     prob_max_map = np.mean(max_maps > 0, 0)
 
-    save2nifti(max_maps_file, max_maps)
+    header = nib.Nifti2Header()
+    header['descrip'] = 'FreeROI label'
+    save2nifti(max_maps_file, max_maps, header=header)
     save2nifti(prob_max_map_file, prob_max_map)
