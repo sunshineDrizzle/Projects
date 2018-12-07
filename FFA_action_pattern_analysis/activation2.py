@@ -4,14 +4,18 @@ if __name__ == '__main__':
     import nibabel as nib
 
     from os.path import join as pjoin
-    from commontool.io.io import CiftiReader, save2nifti
-    from FFA_action_pattern_analysis.clustering1 import map2pattern
+    from commontool.io.io import CiftiReader, save2nifti, GiftiReader
+    from FFA_action_pattern_analysis.clustering1 import get_roi_patterns
 
     # predefine some variates
     # -----------------------
     # predefine parameters
-    cluster_nums = [3]
+    cluster_nums = [2]
     hemi = 'lh'
+    brain_structure = {
+        'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    }
     acti_thr = 2.3  # a threshold about significantly activated
     prob_thr = 0.8
     top_acti_percent = 0.1
@@ -19,28 +23,39 @@ if __name__ == '__main__':
                           'map_min', 'map_max', 'map_mean',
                           'FFA_min', 'FFA_max', 'FFA_mean']
 
-    clustering_thr = 2.3  # a threshold used to cut FFA_data before clustering (default: None)
-    clustering_bin = False  # If true, binarize FFA_data according to clustering_thr
-    clustering_zscore = True  # If true, do z-score on each subject's FFA pattern
+    zscore = False  # If true, do z-score on each subject's FFA pattern
+    thr = 2.3  # a threshold used to cut FFA_data before clustering (default: None)
+    bin = True  # If true, binarize FFA_data according to clustering_thr
+    size_min = 5
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    cluster_num_dirs = pjoin(project_dir, '2mm_KM_thr2.3_zscore/{}clusters')
+    cluster_num_dirs = pjoin(project_dir, '2mm_15_HAC_ward_euclidean_thr2.3_lt5_bin/{}clusters')
+    FFA_label_file = pjoin(project_dir, 'data/HCP_face-avg/label/{}FFA_2mm_15.label')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-    if hemi == 'lh':
-        brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
-        FFA_label = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
-    elif hemi == 'rh':
-        brain_structure = 'CIFTI_STRUCTURE_CORTEX_RIGHT'
-        FFA_label = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
-    else:
-        raise RuntimeError("hemi must be one of ('lh', 'rh')!")
+    lh_geo_file = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
+                  'HCP_S1200_GroupAvg_v1/S1200.L.white_MSMAll.32k_fs_LR.surf.gii'
+    rh_geo_file = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
+                  'HCP_S1200_GroupAvg_v1/S1200.R.white_MSMAll.32k_fs_LR.surf.gii'
+    mask_file = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/crg2.3/{}FFA_patch_maps_lt5.nii.gz')
     # -----------------------
 
     # get maps
-    FFA_vertices = nib.freesurfer.read_label(FFA_label)
+    FFA_vertices = nib.freesurfer.read_label(FFA_label_file.format(hemi[0]))
     reader = CiftiReader(maps_path)
-    maps = reader.get_data(brain_structure, True)
+    maps = reader.get_data(brain_structure[hemi], True)
+
+    if hemi == 'lh':
+        geo_reader = GiftiReader(lh_geo_file)
+    elif hemi == 'rh':
+        geo_reader = GiftiReader(rh_geo_file)
+    else:
+        raise RuntimeError("invalid hemi: {}".format(hemi))
+
+    if mask_file is not None:
+        mask = nib.load(mask_file.format(hemi[0])).get_data() != 0
+    else:
+        mask = None
 
     # analyze labels
     # --------------
@@ -59,7 +74,7 @@ if __name__ == '__main__':
         mean_maps = np.zeros((0, maps.shape[1]))
         prob_maps = np.zeros((0, maps.shape[1]))
         num_maps = np.zeros((0, maps.shape[1]))
-        zscore_mean_maps = np.zeros((0, maps.shape[1]))
+        processed_mean_maps = np.zeros((0, maps.shape[1]))
         for label in sorted(set(subject_labels)):
             # get subgroup data
             subgroup_maps = maps[subject_labels == label]
@@ -81,13 +96,19 @@ if __name__ == '__main__':
             stats_table_content['FFA_max'].append(str(np.max(subgroup_FFA_maps_mean)))
             stats_table_content['FFA_mean'].append(str(np.mean(subgroup_FFA_maps_mean)))
 
-            # get zscore mean maps
-            subgroup_FFA_maps = subgroup_maps[:, FFA_vertices]
-            subgroup_FFA_patterns = map2pattern(subgroup_FFA_maps, clustering_thr, clustering_bin, clustering_zscore)
+            # get processed mean maps
+            if mask is None:
+                subgroup_FFA_patterns = get_roi_patterns(subgroup_maps, FFA_vertices,
+                                                         zscore, thr, bin, size_min, geo_reader.faces, mask)
+            else:
+                subgroup_FFA_patterns = get_roi_patterns(subgroup_maps, FFA_vertices,
+                                                         zscore, thr, bin, size_min, geo_reader.faces,
+                                                         mask[subject_labels == label])
+
             subgroup_FFA_patterns_mean = np.atleast_2d(np.mean(subgroup_FFA_patterns, 0))
-            zscore_mean_map = np.ones((1, maps.shape[1])) * np.min(subgroup_FFA_patterns_mean)
-            zscore_mean_map[:, FFA_vertices] = subgroup_FFA_patterns_mean
-            zscore_mean_maps = np.r_[zscore_mean_maps, zscore_mean_map]
+            processed_mean_map = np.ones((1, maps.shape[1])) * np.min(subgroup_FFA_patterns_mean)
+            processed_mean_map[:, FFA_vertices] = subgroup_FFA_patterns_mean
+            processed_mean_maps = np.r_[processed_mean_maps, processed_mean_map]
 
         max_num_map = np.argmax(num_maps, 0) + 1
         max_prob_map = np.argmax(prob_maps, 0) + 1
@@ -110,7 +131,7 @@ if __name__ == '__main__':
         # save2nifti(pjoin(activation_dir, 'max_prob_map_z{}.nii.gz'.format(acti_thr)), max_prob_map)
         # save2nifti(pjoin(activation_dir, 'top_prob_ROIs_z{}_p{}.nii.gz'.format(acti_thr, prob_thr)), top_prob_ROIs)
         save2nifti(pjoin(activation_dir, '{}_top_acti_ROIs_percent{}.nii.gz'.format(hemi, top_acti_percent * 100)), top_acti_ROIs)
-        save2nifti(pjoin(activation_dir, '{}_zscore_mean_maps.nii.gz'.format(hemi)), zscore_mean_maps)
+        save2nifti(pjoin(activation_dir, '{}_processed_mean_maps.nii.gz'.format(hemi)), processed_mean_maps)
 
         # output statistics
         with open(pjoin(activation_dir, '{}_statistics.csv'.format(hemi)), 'w+') as f:

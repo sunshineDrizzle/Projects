@@ -37,14 +37,14 @@ if __name__ == '__main__':
     from commontool.algorithm.triangular_mesh import get_n_ring_neighbor
 
     threshold = 2.3
-    method = 'LV_weighted'  # crg, LV_weighted, LV_unweighted
+    method = 'crg'  # crg, LV_weighted, LV_unweighted
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     lFFA_label_file = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm_15.label')
     rFFA_label_file = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm_15.label')
     maps_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     subject_ids_file = pjoin(project_dir, 'data/HCP_face-avg/s2/subject_id')
-    patch_dir = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/{}'.format(method))
+    patch_dir = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/{}{}'.format(method, threshold))
     if not os.path.exists(patch_dir):
         os.makedirs(patch_dir)
 
@@ -101,7 +101,7 @@ if __name__ == '__main__':
         patch_stat.extend([str(len(patch)) for patch in patches])
         lFFA_patch_stats.append(','.join(patch_stat))
 
-        print(idx/lmaps.shape[0])
+        print('{}/{}'.format(idx+1, lmaps.shape[0]))
 
     rFFA_patch_maps = np.zeros_like(rmaps)
     rFFA_patch_stats = []
@@ -144,9 +144,11 @@ if __name__ == '__main__':
         patch_stat.extend([str(len(patch)) for patch in patches])
         rFFA_patch_stats.append(','.join(patch_stat))
 
-        print(idx/rmaps.shape[0])
+        print('{}/{}'.format(idx + 1, rmaps.shape[0]))
 
-    save2nifti(pjoin(patch_dir, 'lFFA_patch_maps_thr{}.nii.gz'.format(threshold)), lFFA_patch_maps)
-    save2nifti(pjoin(patch_dir, 'rFFA_patch_maps_thr{}.nii.gz'.format(threshold)), rFFA_patch_maps)
-    open(pjoin(patch_dir, 'lFFA_patch_stats_thr{}'.format(threshold)), 'w+').writelines('\n'.join(lFFA_patch_stats))
-    open(pjoin(patch_dir, 'rFFA_patch_stats_thr{}'.format(threshold)), 'w+').writelines('\n'.join(rFFA_patch_stats))
+    header = nib.Nifti2Header()
+    header['descrip'] = 'FreeROI label'
+    save2nifti(pjoin(patch_dir, 'lFFA_patch_maps.nii.gz'.format(threshold)), lFFA_patch_maps, header=header)
+    save2nifti(pjoin(patch_dir, 'rFFA_patch_maps.nii.gz'.format(threshold)), rFFA_patch_maps, header=header)
+    open(pjoin(patch_dir, 'lFFA_patch_stats'.format(threshold)), 'w+').writelines('\n'.join(lFFA_patch_stats))
+    open(pjoin(patch_dir, 'rFFA_patch_stats'.format(threshold)), 'w+').writelines('\n'.join(rFFA_patch_stats))

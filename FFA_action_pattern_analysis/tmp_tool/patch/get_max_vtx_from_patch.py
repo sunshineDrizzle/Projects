@@ -7,11 +7,11 @@ if __name__ == '__main__':
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     acti_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-    patch_dir = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/LV_unweighted')
-    patch_file = pjoin(patch_dir, 'lFFA_patch_maps_lt5.nii.gz')
-    max_maps_file = pjoin(patch_dir, 'lFFA_max_maps_lt5.nii.gz')
-    prob_max_map_file = pjoin(patch_dir, 'lFFA_prob_max_map_lt5.nii.gz')
-    brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
+    patch_dir = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/crg')
+    patch_file = pjoin(patch_dir, 'rFFA_patch_maps_lt15.nii.gz')
+    max_maps_file = pjoin(patch_dir, 'rFFA_max_maps_lt15.nii.gz')
+    prob_max_map_file = pjoin(patch_dir, 'rFFA_prob_max_map_lt15.nii.gz')
+    brain_structure = 'CIFTI_STRUCTURE_CORTEX_RIGHT'
 
     acti_maps = CiftiReader(acti_file).get_data(brain_structure, True)
     patch_maps = nib.load(patch_file).get_data()

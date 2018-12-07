@@ -11,9 +11,10 @@ if __name__ == '__main__':
     ]
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     subject_ids_file = pjoin(project_dir, 'data/HCP_face-avg/s2/subject_id')
-    subject_ids_selected_file = pjoin(project_dir, '2mm_KM_zscore/3clusters/random_from_subgroup/subject1_id_random10')
+    subject_ids_selected_file = pjoin(project_dir, '2mm_15_HAC_complete_dice_CRGpatchLT5_bin/5clusters/'
+                                                   'random_from_subgroup/subject5_id_random5')
     out_dir = os.path.dirname(subject_ids_selected_file)
-    out_file = pjoin(out_dir, '{hemi}_{item}1_random10.nii.gz')
+    out_file = pjoin(out_dir, '{hemi}_{item}5_random5.nii.gz')
 
     with open(subject_ids_file) as rf:
         subject_ids = rf.read().splitlines()

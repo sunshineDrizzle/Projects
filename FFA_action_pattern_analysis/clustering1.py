@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from scipy import stats
+from commontool.algorithm.triangular_mesh import get_n_ring_neighbor
+from FFA_action_pattern_analysis.tmp_tool.patch.get_patches import get_patch_by_crg
 
 
 def hac_sklearn(data, n_clusters):
@@ -123,14 +125,61 @@ def k_means(data, cluster_nums, n_init=10):
     return labels_list
 
 
-def map2pattern(maps, clustering_thr=None, clustering_bin=False, clustering_zscore=False):
-    patterns = maps.copy()
-    if clustering_thr is not None:
-        if clustering_bin:
-            patterns = (patterns > clustering_thr).astype(np.int8)
+def get_roi_patterns(maps, roi, zscore=False, thr=None, bin=False, size_min=0, faces=None, mask=None):
+    """
+
+    :param maps: N x M array
+        N subjects' hemisphere map
+    :param roi: list|1D array
+        a collection of vertices of the ROI
+    :param zscore: bool
+        If True, do z-score on each subject's ROI pattern.
+        It will be ignored when 'bin' is True.
+    :param thr: float
+        A threshold used to cut ROI data before clustering (default: None)
+    :param bin: bool
+        If True, binarize ROI data according to 'thr'.
+        It will be ignored when 'thr' is None.
+    :param size_min: non-negative integer
+        If is less than or equal to 0, do nothing.
+        else, only reserve the patches whose size is larger than 'size_min' after threshold. And
+        'faces' must be provided.
+        It will be ignored when 'thr' is None or 'mask' is not None.
+    :param faces: face_num x 3 array
+        It only takes effect when 'size_min' is working.
+    :param mask: N x M array
+        indices array used to specify valid vertices
+        It will be ignored when 'thr' is None
+
+    :return: patterns: N x len(roi) array
+        N subjects' ROI pattern
+    """
+    tmp_maps = maps.copy()
+    if thr is not None:
+        if mask is not None:
+            tmp_maps[np.logical_not(mask)] = thr
+        elif size_min > 0:
+            patch_maps = np.zeros_like(maps, dtype=np.bool)
+            for row in range(patch_maps.shape[0]):
+                vertices_thr = set(np.where(maps[row] > thr)[0])
+                vertices_thr_roi = vertices_thr.intersection(roi)
+                mask = np.zeros(patch_maps.shape[1])
+                mask[list(vertices_thr_roi)] = 1
+                edge_list = get_n_ring_neighbor(faces, mask=mask)
+                patches = get_patch_by_crg(vertices_thr_roi, edge_list)
+                for patch in patches:
+                    if len(patch) > size_min:
+                        patch_maps[row, patch] = True
+            tmp_maps[np.logical_not(patch_maps)] = thr
+        patterns = tmp_maps[:, roi]
+        if bin:
+            patterns = (patterns > thr).astype(np.int8)
         else:
-            patterns[patterns <= clustering_thr] = clustering_thr
-    if clustering_zscore and not clustering_bin:
+            patterns[patterns <= thr] = thr
+    else:
+        patterns = tmp_maps[:, roi]
+
+    if zscore and not bin:
         patterns = stats.zscore(patterns, 1)
 
     return patterns
@@ -141,53 +190,80 @@ if __name__ == '__main__':
     import nibabel as nib
 
     from os.path import join as pjoin
-    from commontool.io.io import CiftiReader
+    from commontool.io.io import CiftiReader, GiftiReader
     from commontool.algorithm.plot import imshow
 
     print('Start: predefine some variates')
     # -----------------------
     # predefine parameters
-    clustering_method = 'HAC_single_dice'  # 'HAC_average_dice', 'KM', 'LV', 'GN'
-    clustering_thr = 2.3  # a threshold used to cut FFA_data before clustering (default: None)
-    clustering_bin = True  # If true, binarize FFA_data according to clustering_thr
-    clustering_zscore = False  # If true, do z-score on each subject's FFA pattern
-    # brain_structure = 'CIFTI_STRUCTURE_CORTEX_LEFT'
+    hemi = 'both'  # 'lh', 'rh', 'both'
+    brain_structure = {
+        'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    }
+    clustering_method = 'HAC_ward_euclidean'  # 'HAC_average_dice', 'KM', 'LV', 'GN'
+    zscore = True  # If true, do z-score on each subject's FFA pattern
+    thr = None  # a threshold used to cut FFA_data before clustering (default: None)
+    bin = False  # If true, binarize FFA_data according to clustering_thr
+    size_min = 0  # only work with threshold
     is_graph_needed = True if clustering_method in ('LV', 'GN') else False
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    clustering_dir = pjoin(project_dir, '2mm_{}_thr2.3_bin/clustering_results'.format(clustering_method))
+    clustering_dir = pjoin(project_dir,
+                           '2mm_15_{}_zscore/clustering_results'.format(clustering_method))
     if not os.path.exists(clustering_dir):
         os.makedirs(clustering_dir)
-    # FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
-    lFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
-    rFFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/{}FFA_2mm_15.label')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
+    lh_geo_file = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
+                  'HCP_S1200_GroupAvg_v1/S1200.L.white_MSMAll.32k_fs_LR.surf.gii'
+    rh_geo_file = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
+                  'HCP_S1200_GroupAvg_v1/S1200.R.white_MSMAll.32k_fs_LR.surf.gii'
+    # mask_file = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/crg2.3/{}FFA_patch_maps_lt15.nii.gz')
+    mask_file = None
     # -----------------------
     print('Finish: predefine some variates')
 
     print('Start: prepare data')
     # -----------------------
     # prepare FFA patterns
-    # FFA_vertices = nib.freesurfer.read_label(FFA_label_path)
-    lFFA_vertices = nib.freesurfer.read_label(lFFA_label_path)
-    rFFA_vertices = nib.freesurfer.read_label(rFFA_label_path)
-    maps_reader = CiftiReader(maps_path)
-    # maps = maps_reader.get_data(brain_structure, True)
-    lmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
-    rmaps = maps_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
-    # FFA_maps = maps[:, FFA_vertices]
-    lFFA_maps = lmaps[:, lFFA_vertices]
-    rFFA_maps = rmaps[:, rFFA_vertices]
-    FFA_maps = np.c_[lFFA_maps, rFFA_maps]
+    reader = CiftiReader(maps_path)
+    if hemi == 'both':
+        if mask_file is not None:
+            lh_mask = nib.load(mask_file.format('l')).get_data() != 0
+            rh_mask = nib.load(mask_file.format('r')).get_data() != 0
+        else:
+            lh_mask = None
+            rh_mask = None
+        lh_geo_reader = GiftiReader(lh_geo_file)
+        rh_geo_reader = GiftiReader(rh_geo_file)
+        lFFA_vertices = nib.freesurfer.read_label(FFA_label_path.format('l'))
+        rFFA_vertices = nib.freesurfer.read_label(FFA_label_path.format('r'))
+        lFFA_patterns = get_roi_patterns(reader.get_data(brain_structure['lh'], True), lFFA_vertices,
+                                         zscore, thr, bin, size_min, lh_geo_reader.faces, lh_mask)
+        rFFA_patterns = get_roi_patterns(reader.get_data(brain_structure['rh'], True), rFFA_vertices,
+                                         zscore, thr, bin, size_min, rh_geo_reader.faces, rh_mask)
+        FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
+    else:
+        if hemi == 'lh':
+            geo_reader = GiftiReader(lh_geo_file)
+        elif hemi == 'rh':
+            geo_reader = GiftiReader(rh_geo_file)
+        else:
+            raise RuntimeError("invalid hemi: {}".format(hemi))
 
-    # FFA_patterns = map2pattern(FFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    lFFA_patterns = map2pattern(lFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    rFFA_patterns = map2pattern(rFFA_maps, clustering_thr, clustering_bin, clustering_zscore)
-    FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
+        if mask_file is not None:
+            mask = nib.load(mask_file.format(hemi[0])).get_data() != 0
+        else:
+            mask = None
+
+        FFA_vertices = nib.freesurfer.read_label(FFA_label_path.format(hemi[0]))
+        FFA_patterns = get_roi_patterns(reader.get_data(brain_structure[hemi], True), FFA_vertices,
+                                        zscore, thr, bin, size_min, geo_reader.faces, mask)
 
     # show FFA_patterns
-    imshow(FFA_patterns, 'vertices', 'subjects', 'jet', 'activation')
+    # imshow(FFA_patterns, 'vertices', 'subjects', 'jet', 'activation')
     # -----------------------
     print('Finish: prepare data')
 

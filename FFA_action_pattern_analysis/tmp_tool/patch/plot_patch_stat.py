@@ -5,7 +5,7 @@ if __name__ == '__main__':
     from commontool.io.io import CsvReader
 
     stat_file = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering/data/' \
-                'HCP_face-avg/s2/patches_15/crg/lFFA_patch_stats_thr2.3_lt5'
+                'HCP_face-avg/s2/patches_15/crg/rFFA_patch_stats'
     reader = CsvReader(stat_file)
     patch_nums = np.array(reader.cols[1], dtype=np.uint16)
     patch_sizes = []
