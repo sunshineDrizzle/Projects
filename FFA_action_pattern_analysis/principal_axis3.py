@@ -34,14 +34,16 @@ if __name__ == '__main__':
     import nibabel as nib
     import matplotlib.pyplot as plt
 
-    cluster_num = 3
+    cluster_num = 2
     items = [
+        # 'pattern',
         'activation',
         'curvature',
         'thickness',
         'myelin'
     ]
     item2color = {
+        'pattern': 'k',
         'activation': 'y',
         'curvature': 'r',
         'thickness': 'g',
@@ -49,9 +51,9 @@ if __name__ == '__main__':
     }
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    cluster_num_dir = pjoin(project_dir, '2mm_KM_zscore/{}clusters'.format(cluster_num))
-    lh_PA_file = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm_PA.label')
-    rh_PA_file = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm_PA.label')
+    cluster_num_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/{}clusters'.format(cluster_num))
+    lh_PA_file = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm_25_PA.label')
+    rh_PA_file = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm_25_PA.label')
     subject_labels_path = pjoin(cluster_num_dir, 'subject_labels')
 
     lh_PA = nib.freesurfer.read_label(lh_PA_file)[-1::-1]  # from posterior to anterior
@@ -68,11 +70,25 @@ if __name__ == '__main__':
     item0_ys = ['', np.zeros_like(axes, dtype=object)]
     for item in items:
         if item == 'pattern':
-            lh_src_file = pjoin(cluster_num_dir, 'activation/lh_zscore_mean_maps.nii.gz')
-            rh_src_file = pjoin(cluster_num_dir, 'activation/rh_zscore_mean_maps.nii.gz')
-            lmaps = nib.load(lh_src_file).get_data()
-            rmaps = nib.load(rh_src_file).get_data()
-            pass
+            lh_src_file = pjoin(cluster_num_dir, 'activation/lh_processed_mean_maps.nii.gz')
+            rh_src_file = pjoin(cluster_num_dir, 'activation/rh_processed_mean_maps.nii.gz')
+            src_files = [lh_src_file, rh_src_file]
+            for col in range(2):
+                PA = PAs[col]
+                x = np.arange(len(PA))
+                PA_maps = nib.load(src_files[col]).get_data()[:, PA]
+                for row in range(cluster_num):
+                    y = PA_maps[row]
+                    axes[row, col].plot(x, y, color=item2color[item], label=item)
+                    axes[row, col].set_title(row+1)
+
+                    if item0_ys[0] is '':
+                        item0_ys[1][row, col] = y
+                    else:
+                        print("({0}, {1}) -- corr({2}, {3}): {4}".format(row, col, item0_ys[0], item,
+                                                                         stats.pearsonr(item0_ys[1][row, col], y)))
+            if item0_ys[0] is '':
+                item0_ys[0] = item
             continue
         if item == 'activation':
             src_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')

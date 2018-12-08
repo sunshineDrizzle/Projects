@@ -136,13 +136,13 @@ if __name__ == '__main__':
     thr = None  # a threshold used to cut FFA_data before clustering (default: None)
     bin = False  # If true, binarize FFA_data according to clustering_thr
     size_min = 0
-    analysis_name = '2mm_15_HAC_ward_euclidean_zscore'
-    max_cluster_num = 20
+    analysis_name = '2mm_25_HAC_ward_euclidean_zscore'
+    max_cluster_num = 50
     # dice, modularity, silhouette, gap statistic, elbow_inner_standard
     # elbow_inner_centroid, elbow_inner_pairwise, elbow_inter_centroid, elbow_inter_pairwise
     assessment_metric_pairs = [
-        # ['dice', 'modularity'],
-        ['elbow_inner_standard'],
+        ['dice', 'modularity'],
+        # ['elbow_inner_standard'],
         # ['modularity'],
         # ['silhouette'],
         # ['gap statistic']
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     analysis_dir = pjoin(project_dir, analysis_name)
     clustering_dir = pjoin(analysis_dir, 'clustering_results')
-    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/{}FFA_2mm_15.label')
+    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/{}FFA_2mm_25.label')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     lh_geo_file = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
                   'HCP_S1200_GroupAvg_v1/S1200.L.white_MSMAll.32k_fs_LR.surf.gii'
@@ -232,9 +232,11 @@ if __name__ == '__main__':
         labels_list.append(np.array(open(labels_file).read().split(' '), dtype=np.uint16))
     labels_list.sort(key=lambda x: len(set(x)))
     cluster_nums = np.array([len(set(labels)) for labels in labels_list])
-    end_idx = np.where(cluster_nums > max_cluster_num)[0][0]
-    labels_list = labels_list[:end_idx]
-    cluster_nums = cluster_nums[:end_idx]
+    indices = np.where(cluster_nums > max_cluster_num)[0]
+    if indices:
+        end_idx = indices[0]
+        labels_list = labels_list[:end_idx]
+        cluster_nums = cluster_nums[:end_idx]
     n_labels = len(labels_list)
     for idx, labels in enumerate(labels_list):
         labels_uniq = sorted(set(labels))

@@ -211,10 +211,10 @@ if __name__ == '__main__':
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     clustering_dir = pjoin(project_dir,
-                           '2mm_15_{}_zscore/clustering_results'.format(clustering_method))
+                           '2mm_25_{}_zscore/clustering_results'.format(clustering_method))
     if not os.path.exists(clustering_dir):
         os.makedirs(clustering_dir)
-    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/{}FFA_2mm_15.label')
+    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/{}FFA_2mm_25.label')
     maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     lh_geo_file = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
                   'HCP_S1200_GroupAvg_v1/S1200.L.white_MSMAll.32k_fs_LR.surf.gii'
