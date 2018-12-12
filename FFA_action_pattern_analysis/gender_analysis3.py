@@ -13,8 +13,8 @@ project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
 def different_activation_gender_1080(b_dict):
     # file paths
     maps_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-    lFFA_file = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm.label')
-    rFFA_file = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
+    lFFA_file = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm_25.label')
+    rFFA_file = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm_25.label')
 
     # get maps
     cifti_reader = CiftiReader(maps_file)
@@ -51,18 +51,12 @@ def different_activation_gender_1080(b_dict):
 
     l_mean = np.mean(lFFA_maps_mean)
     r_mean = np.mean(rFFA_maps_mean)
-    l_std = np.std(lFFA_maps_mean)
-    r_std = np.std(rFFA_maps_mean)
     l_sem = sem(lFFA_maps_mean)
     r_sem = sem(rFFA_maps_mean)
     l_m_mean = np.mean(lFFA_maps_mean_m)
     l_f_mean = np.mean(lFFA_maps_mean_f)
     r_m_mean = np.mean(rFFA_maps_mean_m)
     r_f_mean = np.mean(rFFA_maps_mean_f)
-    l_m_std = np.std(lFFA_maps_mean_m)
-    l_f_std = np.std(lFFA_maps_mean_f)
-    r_m_std = np.std(rFFA_maps_mean_m)
-    r_f_std = np.std(rFFA_maps_mean_f)
     l_m_sem = sem(lFFA_maps_mean_m)
     l_f_sem = sem(lFFA_maps_mean_f)
     r_m_sem = sem(rFFA_maps_mean_m)
@@ -93,32 +87,34 @@ def different_activation_gender_1080(b_dict):
 
 def different_activation_gender_subgroup(b_dict):
     # predefine some variables
-    brain_structure = 'CIFTI_STRUCTURE_CORTEX_RIGHT'
-    rois = ['r1_FFA_m', 'r2_FFA_p', 'r2_FFA_a', 'r3_FFA_p', 'r3_FFA_a']
-    roi2label = {'r1_FFA_m': '3', 'l1_FFA_m': '2',
-                 'r2_FFA_p': '1', 'l2_FFA_p': '1',
-                 'r2_FFA_a': '1', 'l2_FFA_a': '1',
-                 'r3_FFA_p': '2', 'l3_FFA_p': '3',
-                 'r3_FFA_a': '2', 'l3_FFA_a': '3'}
+    rois = [
+        'l1_FFA1',
+        'l2_FFA1',
+        'l1_FFA2',
+        'r1_FFA1',
+        'r2_FFA1',
+        'r1_FFA2'
+    ]
 
     # file paths
     maps_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-    n_clusters_dir = pjoin(project_dir, '2mm_KM_init10_regress_right/3clusters')
-    roi_files = pjoin(n_clusters_dir, '{}.label')
-    subject_labels_file = pjoin(n_clusters_dir, 'subject_labels')
+    cluster_num_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/2clusters')
+    roi_files = pjoin(cluster_num_dir, 'activation/{}.nii.gz')
+    subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
 
     with open(subject_labels_file) as f:
         subject_labels = np.array(f.read().split(' '))
 
     cifti_reader = CiftiReader(maps_file)
-    maps = cifti_reader.get_data(brain_structure, True)
+    lmaps = cifti_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
+    rmaps = cifti_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
     # get gender labels
     subjects = np.array(b_dict['Subject'])
     genders = np.array(b_dict['Gender'])
     subjects_m = subjects[genders == 'M']
     subjects_f = subjects[genders == 'F']
     map2subject = [name.split('_')[0] for name in cifti_reader.map_names()]
-    gender_labels = np.zeros((maps.shape[0],), dtype=np.str)
+    gender_labels = np.zeros((len(map2subject),), dtype=np.str)
     for idx, subj_id in enumerate(map2subject):
         if subj_id in subjects_m:
             gender_labels[idx] = 'M'
@@ -127,27 +123,29 @@ def different_activation_gender_subgroup(b_dict):
 
     means_m = []
     means_f = []
-    stds_m = []
-    stds_f = []
     sems_m = []
     sems_f = []
     for roi in rois:
-        roi_file = roi_files.format(roi)
-        roi_vertices = nib.freesurfer.read_label(roi_file)
-        roi_maps = maps[:, roi_vertices]
+        roi_file = roi_files.format(roi[:-1])
+        roi_mask = nib.load(roi_file).get_data().ravel()
+        roi_vertices = np.where(roi_mask == int(roi[-1]))[0]
+        if roi[0] == 'l':
+            roi_maps = lmaps[:, roi_vertices]
+        elif roi[0] == 'r':
+            roi_maps = rmaps[:, roi_vertices]
+        else:
+            raise RuntimeError("invalid roi name: {}".format(roi))
 
-        male_indices = np.logical_and(gender_labels == 'M', subject_labels == roi2label[roi])
-        female_indices = np.logical_and(gender_labels == 'F', subject_labels == roi2label[roi])
+        male_indices = np.logical_and(gender_labels == 'M', subject_labels == roi[1])
+        female_indices = np.logical_and(gender_labels == 'F', subject_labels == roi[1])
         roi_map_means_m = np.mean(roi_maps[male_indices], 1)
         roi_map_means_f = np.mean(roi_maps[female_indices], 1)
-        print('the number of males about {0}: {1}'.format(roi, roi_map_means_m.shape[0]))
-        print('the number of females about {0}: {1}'.format(roi, roi_map_means_f.shape[0]))
-        print('{0}_male vs. {0}_female: p={1}\n'.format(roi, ttest_ind(roi_map_means_m, roi_map_means_f)[1]))
+        # print('the number of males about {0}: {1}'.format(roi, roi_map_means_m.shape[0]))
+        # print('the number of females about {0}: {1}'.format(roi, roi_map_means_f.shape[0]))
+        print('{0}_male vs. {0}_female: p={1}'.format(roi, ttest_ind(roi_map_means_m, roi_map_means_f)[1]))
 
         means_m.append(np.mean(roi_map_means_m))
         means_f.append(np.mean(roi_map_means_f))
-        stds_m.append(np.std(roi_map_means_m))
-        stds_f.append(np.std(roi_map_means_f))
         sems_m.append(sem(roi_map_means_m))
         sems_f.append(sem(roi_map_means_f))
 
@@ -174,9 +172,9 @@ def different_activation_gender_subgroup(b_dict):
 if __name__ == '__main__':
     from commontool.io.io import CsvReader
 
-    behavior_file = pjoin(project_dir, 'data/S1200_behavior.csv')
+    behavior_file = pjoin(project_dir, 'data/HCP/S1200_behavior.csv')
     csv_reader = CsvReader(behavior_file)
     behavior_dict = csv_reader.to_dict()
 
-    # different_activation_gender_1080(behavior_dict)
-    different_activation_gender_subgroup(behavior_dict)
+    different_activation_gender_1080(behavior_dict)
+    # different_activation_gender_subgroup(behavior_dict)

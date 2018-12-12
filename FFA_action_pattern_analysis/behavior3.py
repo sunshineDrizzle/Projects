@@ -48,7 +48,7 @@ def get_float_data(d, name):
     while '' in data:
         data.remove('')
 
-    return list(map(float, data))
+    return np.array(list(map(float, data)))
 
 
 def explore_float_data(d, name, label):
@@ -65,11 +65,9 @@ def explore_float_data(d, name, label):
         the label of the current cluster
     """
     data = get_float_data(d, name)
-    mean = np.mean(data)
 
-    print('The mean {} of Cluster{}:'.format(name, label), mean,
-          '(valid subject number: {})'.format(len(data)))
-    return mean
+    print('The number of valid subjects of subgroup{} for {}:'.format(label, name), len(data))
+    return data
 
 
 def explore_Gender(behavior_dict, label):
@@ -81,100 +79,25 @@ def explore_Gender(behavior_dict, label):
     return male_num, female_num
 
 
-def explore_WM_Task_Acc(behavior_dict, label):
-    wm_task_acc = list(behavior_dict['WM_Task_Acc'])
-    while '' in wm_task_acc:
-        wm_task_acc.remove('')
-    wm_task_acc = list(map(float, wm_task_acc))
-    print('The mean WM_Task_Acc of Cluster{}:'.format(label), np.mean(wm_task_acc),
-          '(valid subject number: {})'.format(len(wm_task_acc)))
-
-
-def explore_WM_Task_2bk_Acc(behavior_dict, label):
-    wm_task_2bk_acc = list(behavior_dict['WM_Task_2bk_Acc'])
-    while '' in wm_task_2bk_acc:
-        wm_task_2bk_acc.remove('')
-    wm_task_2bk_acc = list(map(float, wm_task_2bk_acc))
-
-    print('The mean WM_Task_2bk_Acc of Cluster{}:'.format(label), np.mean(wm_task_2bk_acc),
-          '(valid subject number: {})'.format(len(wm_task_2bk_acc)))
-
-
-def explore_WM_Task_0bk_Acc(behavior_dict, label):
-    wm_task_0bk_acc = list(behavior_dict['WM_Task_0bk_Acc'])
-    while '' in wm_task_0bk_acc:
-        wm_task_0bk_acc.remove('')
-    wm_task_0bk_acc = list(map(float, wm_task_0bk_acc))
-
-    print('The mean WM_Task_0bk_Acc of Cluster{}:'.format(label), np.mean(wm_task_0bk_acc),
-          '(valid subject number: {})'.format(len(wm_task_0bk_acc)))
-
-
-def explore_WM_Task_Median_RT(behavior_dict, label):
-    wm_task_median_rt = list(behavior_dict['WM_Task_Median_RT'])
-    while '' in wm_task_median_rt:
-        wm_task_median_rt.remove('')
-    wm_task_median_rt = list(map(float, wm_task_median_rt))
-
-    print('The mean WM_Task_Median_RT of Cluster{}:'.format(label), np.mean(wm_task_median_rt),
-          '(valid subject number: {})'.format(len(wm_task_median_rt)))
-
-
-def explore_WM_Task_2bk_Median_RT(behavior_dict, label):
-    wm_task_2bk_median_rt = list(behavior_dict['WM_Task_2bk_Median_RT'])
-    while '' in wm_task_2bk_median_rt:
-        wm_task_2bk_median_rt.remove('')
-    wm_task_2bk_median_rt = list(map(float, wm_task_2bk_median_rt))
-
-    print('The mean WM_Task_2bk_Median_RT of Cluster{}:'.format(label), np.mean(wm_task_2bk_median_rt),
-          '(valid subject number: {})'.format(len(wm_task_2bk_median_rt)))
-
-
-def explore_WM_Task_0bk_Median_RT(behavior_dict, label):
-    wm_task_0bk_median_rt = list(behavior_dict['WM_Task_0bk_Median_RT'])
-    while '' in wm_task_0bk_median_rt:
-        wm_task_0bk_median_rt.remove('')
-    wm_task_0bk_median_rt = list(map(float, wm_task_0bk_median_rt))
-
-    print('The mean WM_Task_0bk_Median_RT of Cluster{}:'.format(label), np.mean(wm_task_0bk_median_rt),
-          '(valid subject number: {})'.format(len(wm_task_0bk_median_rt)))
-
-
-def explore_WM_Task_0bk_Face_Acc(behavior_dict, label):
-    wm_task_0bk_face_acc = list(behavior_dict['WM_Task_0bk_Face_Acc'])
-    while '' in wm_task_0bk_face_acc:
-        wm_task_0bk_face_acc.remove('')
-    wm_task_0bk_face_acc = list(map(float, wm_task_0bk_face_acc))
-
-    print('The mean WM_Task_0bk_Face_Acc of Cluster{}:'.format(label), np.mean(wm_task_0bk_face_acc),
-          '(valid subject number: {})'.format(len(wm_task_0bk_face_acc)))
-
-
-def explore_WM_Task_2bk_Face_Acc(behavior_dict, label):
-    pass
-
-
 if __name__ == '__main__':
     from os.path import join as pjoin
+    from scipy.stats import sem, ttest_ind
     from matplotlib import pyplot as plt
-
     from commontool.algorithm.plot import auto_bar_width, show_bar_value
 
     # predefine some variates
-    n_clusters = 3
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    n_clusters_dir = pjoin(project_dir, '2mm_KM_zscore_right/{}clusters'.format(n_clusters))
-    # n_clusters_dir = pjoin(project_dir, '4mm_ward_regress_right/{}clusters'.format(n_clusters))
+    n_clusters_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/2clusters')
     subject_labels_file = pjoin(n_clusters_dir, 'subject_labels')
     subjects_1080_file = pjoin(project_dir, 'data/HCP_face-avg/s2/subject_id')
 
     with open(subject_labels_file) as rf:
-        subject_labels = np.array(rf.read().split(' '))
+        subject_labels = np.array(rf.read().split(' '), dtype=np.uint16)
 
     with open(subjects_1080_file) as rf:
         subjects_1080 = np.array(rf.read().splitlines())
 
-    with open(pjoin(project_dir, 'data/S1200_behavior.csv')) as f:
+    with open(pjoin(project_dir, 'data/HCP/S1200_behavior.csv')) as f:
         lines = f.read().splitlines()
     behavior_names = lines[0].split(',')[1:]
     subject_dict = {}
@@ -184,17 +107,25 @@ if __name__ == '__main__':
 
     male_nums = []
     female_nums = []
-    float_items = ['WM_Task_Acc', 'WM_Task_0bk_Acc', 'WM_Task_2bk_Acc',
-                   'WM_Task_0bk_Face_Acc', 'WM_Task_2bk_Face_Acc',
-                   'WM_Task_Median_RT', 'WM_Task_0bk_Median_RT', 'WM_Task_2bk_Median_RT',
-                   'WM_Task_0bk_Face_Median_RT', 'WM_Task_2bk_Face_Median_RT']
-    float_mean_dict = {}
+    float_items = [
+        # 'WM_Task_Acc',
+        # 'WM_Task_0bk_Acc',
+        # 'WM_Task_2bk_Acc',
+        # 'WM_Task_0bk_Face_Acc',
+        'WM_Task_2bk_Face_Acc',
+        # 'WM_Task_Median_RT',
+        # 'WM_Task_0bk_Median_RT',
+        # 'WM_Task_2bk_Median_RT',
+        # 'WM_Task_0bk_Face_Median_RT',
+        'WM_Task_2bk_Face_Median_RT'
+    ]
+    float_data_dict = {}
     for item in float_items:
-        float_mean_dict[item] = []
+        float_data_dict[item] = []
 
-    for label in sorted(set(subject_labels)):
-        # with open(pjoin(n_clusters_dir, 'subjects{}_id'.format(label))) as f:
-        #     subgroup_ids = f.read().splitlines()
+    labels = np.unique(subject_labels)
+    label_num = len(labels)
+    for label in labels:
         subgroup_ids = subjects_1080[subject_labels == label]
 
         behavior_dict = get_behavior_dict(subject_dict, behavior_names, subgroup_ids)
@@ -204,10 +135,10 @@ if __name__ == '__main__':
         female_nums.append(female_num)
 
         for item in float_items:
-            float_mean_dict[item].append(explore_float_data(behavior_dict, item, label))
+            float_data_dict[item].append(explore_float_data(behavior_dict, item, label))
 
     # plot
-    x = np.arange(n_clusters)
+    x = np.arange(label_num)
     width = auto_bar_width(x, 2)
     plt.figure()
     ax = plt.gca()
@@ -217,7 +148,7 @@ if __name__ == '__main__':
     show_bar_value(rects2)
     ax.legend((rects1[0], rects2[1]), ('male', 'female'))
     ax.set_xticks(x + width / 2.0)
-    ax.set_xticklabels(x + 1)
+    ax.set_xticklabels(labels)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_title('Gender')
@@ -230,14 +161,16 @@ if __name__ == '__main__':
         plt.figure()
         ax = plt.gca()
         if 'Acc' in item:
-            y = [i/100.0 for i in float_mean_dict[item]]
+            float_data_list = [float_data/100.0 for float_data in float_data_dict[item]]
         elif 'RT' in item:
-            y = float_mean_dict[item]
+            float_data_list = [float_data/1000.0 for float_data in float_data_dict[item]]
         else:
             raise RuntimeError('{} is not supported!'.format(item))
-        rects = ax.bar(x, y, width, color='b')
+        y = [np.mean(float_data) for float_data in float_data_list]
+        sems = [sem(float_data) for float_data in float_data_list]
+        rects = ax.bar(x, y, width, color='b', yerr=sems, ecolor='blue', alpha=0.5)
         ax.set_xticks(x)
-        ax.set_xticklabels(x + 1)
+        ax.set_xticklabels(labels)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.set_title(item)
@@ -247,16 +180,18 @@ if __name__ == '__main__':
             ax.set_ylabel('accuracy')
         elif 'RT' in item:
             show_bar_value(rects, '.2f')
-            ax.set_ylabel('reaction time (mm)')
+            ax.set_ylabel('reaction time (sec)')
         else:
             raise RuntimeError('{} is not supported!'.format(item))
+
+        for i in range(label_num):
+            for j in range(i+1, label_num):
+                print('subgroup{} vs. subgroup{} with {}:'.format(labels[i], labels[j], item),
+                      ttest_ind(float_data_list[i], float_data_list[j]))
 
         # plt.savefig(pjoin(n_clusters_dir, '{}.png'.format(item)))
 
     # addition
-    # behavior_dict_full = get_behavior_dict(subject_dict, behavior_names)
-    # male_num_total = behavior_dict_full['Gender'].count('M')
-    # female_num_total = behavior_dict_full['Gender'].count('F')
     male_num_total = np.sum(male_nums)
     female_num_total = np.sum(female_nums)
     x = np.arange(1)
@@ -276,7 +211,7 @@ if __name__ == '__main__':
     ax.set_ylabel('count')
     # plt.savefig(pjoin(n_clusters_dir, '1080_Gender.png'))
 
-    x = np.arange(n_clusters)
+    x = np.arange(label_num)
     width = auto_bar_width(x, 2)
     plt.figure()
     ax = plt.gca()
@@ -288,12 +223,36 @@ if __name__ == '__main__':
     show_bar_value(rects2, '.2%')
     ax.legend((rects1[0], rects2[1]), ('male', 'female'))
     ax.set_xticks(x + width / 2.0)
-    ax.set_xticklabels(x + 1)
+    ax.set_xticklabels(labels)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_title('Gender')
     ax.set_xlabel('subgroup label')
     ax.set_ylabel('percent')
     # plt.savefig(pjoin(n_clusters_dir, 'Gender_percent.png'))
+
+    acc_item = 'WM_Task_2bk_Face_Acc'
+    rt_item = 'WM_Task_2bk_Face_Median_RT'
+    title = '{}/{}'.format(acc_item, rt_item)
+    x = np.arange(label_num)
+    width = auto_bar_width(x)
+    plt.figure()
+    ax = plt.gca()
+    acc_data_list = [float_data / 100.0 for float_data in float_data_dict[acc_item]]
+    rt_data_list = [float_data / 1000.0 for float_data in float_data_dict[rt_item]]
+    float_data_list = [acc / rt for acc, rt in zip(acc_data_list, rt_data_list)]
+    y = [np.mean(float_data) for float_data in float_data_list]
+    sems = [sem(float_data) for float_data in float_data_list]
+    rects = ax.bar(x, y, width, color='b', yerr=sems, ecolor='blue', alpha=0.5)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.set_title(title)
+    ax.set_xlabel('subgroup label')
+    for i in range(label_num):
+        for j in range(i + 1, label_num):
+            print('subgroup{} vs. subgroup{} with {}:'.format(labels[i], labels[j], title),
+                  ttest_ind(float_data_list[i], float_data_list[j]))
 
     plt.show()
