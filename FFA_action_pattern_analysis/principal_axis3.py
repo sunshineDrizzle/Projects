@@ -46,20 +46,26 @@ if __name__ == '__main__':
 
     cluster_num = 2
     items = [
-        'pattern',
-        # 'activation',
+        # 'pattern',
         # 'curvature',
         # 'thickness',
         # 'myelin',
-        'mean_bold_signal'
+        # 'mean_bold_signal',
+        'body-avg',
+        'place-avg',
+        'tool-avg',
+        'face-avg'
     ]
     item2color = {
         'pattern': 'k',
-        'activation': 'y',
         'curvature': 'r',
         'thickness': 'g',
         'myelin': 'b',
-        'mean_bold_signal': 'c'
+        'mean_bold_signal': 'c',
+        'body-avg': 'm',
+        'place-avg': 'purple',
+        'tool-avg': 'lime',
+        'face-avg': 'y',
     }
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
@@ -96,9 +102,8 @@ if __name__ == '__main__':
                     axes[row, col].set_title(row+1)
                     item_ys_dict[item][row, col] = y
             continue
-        if item == 'activation':
-            src_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-        elif item == 'curvature':
+
+        if item == 'curvature':
             src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200.1080.curvature_MSMAll.32k_fs_LR.dscalar.nii')
         elif item == 'thickness':
             src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_thickness_MSMAll_32k_fs_LR.dscalar.nii')
@@ -106,6 +111,14 @@ if __name__ == '__main__':
             src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_MyelinMap_BC_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'mean_bold_signal':
             src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_Mean_BOLD_Signal_MSMAll.dscalar.nii')
+        elif item == 'body-avg':
+            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_cope18_BODY-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+        elif item == 'place-avg':
+            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_cope20_PLACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+        elif item == 'tool-avg':
+            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_cope21_TOOL-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+        elif item == 'face-avg':
+            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
         else:
             raise RuntimeError("no such item: {}".format(item))
         PA_plot(src_file, brain_structures, PAs, subject_labels, axes, item2color[item], item, True, item_ys_dict)
@@ -114,8 +127,8 @@ if __name__ == '__main__':
         for col in range(axes.shape[1]):
             axes[row, col].legend()
 
-    inter_subgroup_corr(item_ys_dict, 'mean_bold_signal')
-    inter_item_corr(item_ys_dict, 'pattern', 'mean_bold_signal')
+    # inter_subgroup_corr(item_ys_dict, 'mean_bold_signal')
+    # inter_item_corr(item_ys_dict, 'activation', 'face-avg')
 
     plt.tight_layout()
     plt.show()
