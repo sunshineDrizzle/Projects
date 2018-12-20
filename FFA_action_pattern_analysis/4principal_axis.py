@@ -69,14 +69,14 @@ if __name__ == '__main__':
     }
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    cluster_num_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/{}clusters'.format(cluster_num))
-    lh_PA_file = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm_25_PA.label')
-    rh_PA_file = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm_25_PA.label')
-    subject_labels_path = pjoin(cluster_num_dir, 'subject_labels')
+    cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/{}clusters'.format(cluster_num))
+    lh_PA_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/lFFA_25_PA.label')
+    rh_PA_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/rFFA_25_PA.label')
+    subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
 
     lh_PA = nib.freesurfer.read_label(lh_PA_file)[-1::-1]  # from posterior to anterior
     rh_PA = nib.freesurfer.read_label(rh_PA_file)[-1::-1]  # from posterior to anterior
-    with open(subject_labels_path) as rf:
+    with open(subject_labels_file) as rf:
         subject_labels = np.array(rf.read().split(' '), dtype=np.uint16)
 
     fig, axes = plt.subplots(cluster_num, 2, sharex=True)
@@ -104,21 +104,21 @@ if __name__ == '__main__':
             continue
 
         if item == 'curvature':
-            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200.1080.curvature_MSMAll.32k_fs_LR.dscalar.nii')
+            src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_curvature_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'thickness':
-            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_thickness_MSMAll_32k_fs_LR.dscalar.nii')
+            src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_thickness_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'myelin':
-            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_MyelinMap_BC_MSMAll_32k_fs_LR.dscalar.nii')
+            src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_MyelinMap_BC_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'mean_bold_signal':
-            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_Mean_BOLD_Signal_MSMAll.dscalar.nii')
+            src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_Mean_BOLD_Signal_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'body-avg':
-            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_cope18_BODY-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+            src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope18_BODY-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'place-avg':
-            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_cope20_PLACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+            src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope20_PLACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'tool-avg':
-            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_cope21_TOOL-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+            src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope21_TOOL-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'face-avg':
-            src_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+            src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
         else:
             raise RuntimeError("no such item: {}".format(item))
         PA_plot(src_file, brain_structures, PAs, subject_labels, axes, item2color[item], item, True, item_ys_dict)

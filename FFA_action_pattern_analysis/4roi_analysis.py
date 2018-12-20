@@ -74,7 +74,7 @@ if __name__ == '__main__':
     from os.path import join as pjoin
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    cluster_num_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/2clusters')
+    cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters')
     roi_files = pjoin(cluster_num_dir, 'activation/{hemi}{label}_FFA.nii.gz')
     subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
     roi_dir = pjoin(cluster_num_dir, 'roi_analysis')
@@ -83,15 +83,15 @@ if __name__ == '__main__':
 
     subject_labels = np.array(open(subject_labels_file).read().split(' '), dtype=np.uint16)
 
-    # calc_roi_mean_intrasubgroup(
-    #     pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii'),
-    #     roi_files, subject_labels, pjoin(roi_dir, 'roi_mean_face-avg_intrasubgroup')
-    # )
-    # calc_roi_mean_allsubgroup(
-    #     pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii'),
-    #     roi_files, subject_labels, pjoin(roi_dir, 'roi_mean_face-avg_allsubgroup')
-    # )
-    calc_roi_mean_allsubgroup(
-        pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_Mean_BOLD_Signal_MSMAll.dscalar.nii'),
-        roi_files, subject_labels, pjoin(roi_dir, 'roi_mean_mean_bold_signal_allsubgroup')
+    calc_roi_mean_intrasubgroup(
+        pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii'),
+        roi_files, subject_labels, pjoin(roi_dir, 'roi_mean_face-avg_intrasubgroup')
     )
+    calc_roi_mean_allsubgroup(
+        pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii'),
+        roi_files, subject_labels, pjoin(roi_dir, 'roi_mean_face-avg_allsubgroup')
+    )
+    # calc_roi_mean_allsubgroup(
+    #     pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_Mean_BOLD_Signal_MSMAll_32k_fs_LR.dscalar.nii'),
+    #     roi_files, subject_labels, pjoin(roi_dir, 'roi_mean_mean_bold_signal_allsubgroup')
+    # )

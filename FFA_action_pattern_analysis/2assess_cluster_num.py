@@ -48,14 +48,15 @@ def gap_stat_mine(data, cluster_nums, ref_num=10, cluster_method=None):
 
 class ClusteringVlineMoverPlotter(VlineMoverPlotter):
 
-    def __init__(self, data, labels_list, analysis_dir, clustering_dir,
+    def __init__(self, data, labels_list, clustering_dir, clustering_result_dir,
                  nrows=1, ncols=1, sharex=False, sharey=False,
                  squeese=True, subplot_kw=None, gridspec_kw=None, **fig_kw):
         super(ClusteringVlineMoverPlotter, self).__init__(nrows, ncols, sharex, sharey,
                                                           squeese, subplot_kw, gridspec_kw, **fig_kw)
         self.data = data
         self.labels_list = labels_list
-        self.analysis_dir = analysis_dir
+        self.clustering_dir = clustering_dir
+        self.clustering_result_dir = clustering_result_dir
 
     def _on_clicked(self, event):
         if event.button == 3:
@@ -71,12 +72,12 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
             labels = self.labels_list[labels_idx]
             labels_uniq = sorted(set(labels))
             n_clusters = len(labels_uniq)
-            n_clusters_dir = pjoin(self.analysis_dir, '{}clusters'.format(n_clusters))
+            n_clusters_dir = pjoin(self.clustering_dir, '{}clusters'.format(n_clusters))
             if not os.path.exists(n_clusters_dir):
                 os.makedirs(n_clusters_dir)
 
             # create soft link to corresponding labels' file
-            labels_file = pjoin(clustering_dir, '{}subject_labels'.format(n_clusters))
+            labels_file = pjoin(self.clustering_result_dir, '{}subject_labels'.format(n_clusters))
             os.system('cd {} && ln -s {} subject_labels'.format(n_clusters_dir, labels_file))
 
             # show heatmap for rearranged data
@@ -118,10 +119,9 @@ if __name__ == '__main__':
     import nibabel as nib
 
     from scipy import stats
-    from commontool.io.io import CiftiReader, GiftiReader
+    from commontool.io.io import CiftiReader
     from commontool.algorithm.tool import elbow_score
     from commontool.algorithm.plot import imshow
-    from FFA_action_pattern_analysis.clustering1 import get_roi_patterns
 
     print('Start: predefine some variates')
     # -----------------------
@@ -132,17 +132,13 @@ if __name__ == '__main__':
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
     }
     weight_type = ('dissimilar', 'euclidean')
-    zscore = True  # If true, do z-score on each subject's FFA pattern
-    thr = None  # a threshold used to cut FFA_data before clustering (default: None)
-    bin = False  # If true, binarize FFA_data according to clustering_thr
-    size_min = 0
-    analysis_name = '2mm_25_HAC_ward_euclidean_zscore'
+    clustering_method = 'HAC_ward_euclidean'
     max_cluster_num = 50
     # dice, modularity, silhouette, gap statistic, elbow_inner_standard
     # elbow_inner_centroid, elbow_inner_pairwise, elbow_inter_centroid, elbow_inter_pairwise
     assessment_metric_pairs = [
-        ['dice', 'modularity'],
-        # ['elbow_inner_standard'],
+        # ['dice', 'modularity'],
+        ['elbow_inner_standard'],
         # ['modularity'],
         # ['silhouette'],
         # ['gap statistic']
@@ -155,60 +151,32 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    analysis_dir = pjoin(project_dir, analysis_name)
-    clustering_dir = pjoin(analysis_dir, 'clustering_results')
-    FFA_label_path = pjoin(project_dir, 'data/HCP_face-avg/label/{}FFA_2mm_25.label')
-    maps_path = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-    lh_geo_file = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
-                  'HCP_S1200_GroupAvg_v1/S1200.L.white_MSMAll.32k_fs_LR.surf.gii'
-    rh_geo_file = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
-                  'HCP_S1200_GroupAvg_v1/S1200.R.white_MSMAll.32k_fs_LR.surf.gii'
-    # mask_file = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/crg2.3/{}FFA_patch_maps_lt5.nii.gz')
-    mask_file = None
+    analysis_dir = pjoin(project_dir, 's2_25_zscore')
+    clustering_dir = pjoin(analysis_dir, clustering_method)
+    clustering_result_dir = pjoin(clustering_dir, 'clustering_results')
+    FFA_label_files = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label')
+    maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+    FFA_pattern_files = pjoin(analysis_dir, '{}FFA_patterns.nii.gz')
     # -----------------------
     print('Finish: predefine some variates')
 
     print('Start: prepare data')
     # -----------------------
     # prepare FFA patterns
-    reader = CiftiReader(maps_path)
+    reader = CiftiReader(maps_file)
     if hemi == 'both':
-        if mask_file is not None:
-            lh_mask = nib.load(mask_file.format('l')).get_data() != 0
-            rh_mask = nib.load(mask_file.format('r')).get_data() != 0
-        else:
-            lh_mask = None
-            rh_mask = None
-        lh_geo_reader = GiftiReader(lh_geo_file)
-        rh_geo_reader = GiftiReader(rh_geo_file)
-        lFFA_vertices = nib.freesurfer.read_label(FFA_label_path.format('l'))
-        rFFA_vertices = nib.freesurfer.read_label(FFA_label_path.format('r'))
-        lFFA_patterns = get_roi_patterns(reader.get_data(brain_structure['lh'], True), lFFA_vertices,
-                                         zscore, thr, bin, size_min, lh_geo_reader.faces, lh_mask)
-        rFFA_patterns = get_roi_patterns(reader.get_data(brain_structure['rh'], True), rFFA_vertices,
-                                         zscore, thr, bin, size_min, rh_geo_reader.faces, rh_mask)
-        FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
-
+        lFFA_vertices = nib.freesurfer.read_label(FFA_label_files.format('l'))
+        rFFA_vertices = nib.freesurfer.read_label(FFA_label_files.format('r'))
         lFFA_maps = reader.get_data(brain_structure['lh'], True)[:, lFFA_vertices]
         rFFA_maps = reader.get_data(brain_structure['rh'], True)[:, rFFA_vertices]
         FFA_maps = np.c_[lFFA_maps, rFFA_maps]
+        lFFA_patterns = nib.load(FFA_pattern_files.format('l')).get_data()
+        rFFA_patterns = nib.load(FFA_pattern_files.format('r')).get_data()
+        FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
     else:
-        if hemi == 'lh':
-            geo_reader = GiftiReader(lh_geo_file)
-        elif hemi == 'rh':
-            geo_reader = GiftiReader(rh_geo_file)
-        else:
-            raise RuntimeError("invalid hemi: {}".format(hemi))
-
-        if mask_file is not None:
-            mask = nib.load(mask_file.format(hemi[0])).get_data() != 0
-        else:
-            mask = None
-
-        FFA_vertices = nib.freesurfer.read_label(FFA_label_path.format(hemi[0]))
-        FFA_patterns = get_roi_patterns(reader.get_data(brain_structure[hemi], True), FFA_vertices,
-                                        zscore, thr, bin, size_min, geo_reader.faces, mask)
+        FFA_vertices = nib.freesurfer.read_label(FFA_label_files.format(hemi[0]))
         FFA_maps = reader.get_data(brain_structure[hemi], True)[:, FFA_vertices]
+        FFA_patterns = nib.load(FFA_pattern_files.format(hemi[0])).get_data()
     # -----------------------
     print('Finish: prepare data')
 
@@ -227,7 +195,8 @@ if __name__ == '__main__':
     print('Start: calculate assessments')
     # -----------------------
     labels_list = []
-    labels_files = [pjoin(clustering_dir, item) for item in os.listdir(clustering_dir) if 'subject_labels' in item]
+    labels_files = [pjoin(clustering_result_dir, item) for item in os.listdir(clustering_result_dir)
+                    if 'subject_labels' in item]
     for labels_file in labels_files:
         labels_list.append(np.array(open(labels_file).read().split(' '), dtype=np.uint16))
     labels_list.sort(key=lambda x: len(set(x)))
@@ -239,7 +208,7 @@ if __name__ == '__main__':
         cluster_nums = cluster_nums[:end_idx]
     n_labels = len(labels_list)
     for idx, labels in enumerate(labels_list):
-        labels_uniq = sorted(set(labels))
+        labels_uniq = np.unique(labels)
         for metric in assessments_dict.keys():
             if metric == 'dice':
                 from commontool.algorithm.tool import calc_overlap
@@ -287,12 +256,12 @@ if __name__ == '__main__':
     if 'gap statistic' in assessments_dict.keys():
         from FFA_action_pattern_analysis.clustering1 import hac_scipy, k_means
 
-        if 'HAC' in analysis_name:
+        if 'HAC' in clustering_method:
             cluster_method = hac_scipy
-        elif 'KM' in analysis_name:
+        elif 'KM' in clustering_method:
             cluster_method = k_means
         else:
-            raise RuntimeError("analysis-{} isn't supported at present!".format(analysis_name))
+            raise RuntimeError("analysis-{} isn't supported at present!".format(clustering_method))
 
         labels_list, gaps, s, k_selected = gap_stat_mine(FFA_patterns, cluster_nums,
                                                          cluster_method=cluster_method)
@@ -303,7 +272,7 @@ if __name__ == '__main__':
     vline_plotter_holder = []
     for metric_pair in assessment_metric_pairs:
         # plot assessment curve
-        v_plotter = ClusteringVlineMoverPlotter(FFA_patterns, labels_list, analysis_dir, clustering_dir)
+        v_plotter = ClusteringVlineMoverPlotter(FFA_patterns, labels_list, clustering_dir, clustering_result_dir)
 
         if metric_pair[0] == 'dice':
             y = np.mean(assessments_dict[metric_pair[0]], 1)

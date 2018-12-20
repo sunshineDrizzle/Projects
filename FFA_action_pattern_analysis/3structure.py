@@ -45,16 +45,16 @@ if __name__ == '__main__':
     # -----------------------
     # predefine parameters
     cluster_nums = [2]
-    hemi = 'rh'
+    hemi = 'lh'
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    cluster_num_dirs = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/{}clusters')
+    cluster_num_dirs = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/{}clusters')
     # -----------------------
 
-    save_mean_maps(pjoin(project_dir, 'data/HCP_face-avg/S1200.1080.curvature_MSMAll.32k_fs_LR.dscalar.nii'),
+    save_mean_maps(pjoin(project_dir, 'data/HCP_1080/S1200_1080_curvature_MSMAll_32k_fs_LR.dscalar.nii'),
                    hemi, cluster_nums, 'curv')
-    # save_mean_maps(pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_MyelinMap_BC_MSMAll_32k_fs_LR.dscalar.nii'),
+    # save_mean_maps(pjoin(project_dir, 'data/HCP_1080/S1200_1080_MyelinMap_BC_MSMAll_32k_fs_LR.dscalar.nii'),
     #                hemi, cluster_nums, 'myelin')
-    # save_mean_maps(pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_thickness_MSMAll_32k_fs_LR.dscalar.nii'),
+    # save_mean_maps(pjoin(project_dir, 'data/HCP_1080/S1200_1080_thickness_MSMAll_32k_fs_LR.dscalar.nii'),
     #                hemi, cluster_nums, 'thickness')

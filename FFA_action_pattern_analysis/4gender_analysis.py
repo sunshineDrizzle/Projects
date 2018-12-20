@@ -12,9 +12,9 @@ project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
 
 def different_activation_gender_1080(b_dict):
     # file paths
-    maps_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-    lFFA_file = pjoin(project_dir, 'data/HCP_face-avg/label/lFFA_2mm_25.label')
-    rFFA_file = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm_25.label')
+    maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+    lFFA_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/lFFA_25.label')
+    rFFA_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/rFFA_25.label')
 
     # get maps
     cifti_reader = CiftiReader(maps_file)
@@ -97,8 +97,8 @@ def different_activation_gender_subgroup(b_dict):
     ]
 
     # file paths
-    maps_file = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-    cluster_num_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/2clusters')
+    maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+    cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters')
     roi_files = pjoin(cluster_num_dir, 'activation/{}.nii.gz')
     subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
 
@@ -177,4 +177,4 @@ if __name__ == '__main__':
     behavior_dict = csv_reader.to_dict()
 
     different_activation_gender_1080(behavior_dict)
-    # different_activation_gender_subgroup(behavior_dict)
+    different_activation_gender_subgroup(behavior_dict)

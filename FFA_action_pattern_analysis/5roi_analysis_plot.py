@@ -48,7 +48,7 @@ if __name__ == '__main__':
     from os.path import join as pjoin
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    roi_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/2clusters/roi_analysis')
+    roi_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/roi_analysis')
 
     # ROIitems = ['l1_FFA1', 'l2_FFA1', 'l1_FFA2', 'r1_FFA1', 'r2_FFA1', 'r1_FFA2']
     # xticklabels = ROIitems

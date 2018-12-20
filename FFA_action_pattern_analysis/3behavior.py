@@ -87,14 +87,14 @@ if __name__ == '__main__':
 
     # predefine some variates
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    n_clusters_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/2clusters')
-    subject_labels_file = pjoin(n_clusters_dir, 'subject_labels')
-    subjects_1080_file = pjoin(project_dir, 'data/HCP_face-avg/s2/subject_id')
+    cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters')
+    subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
+    subjects_id_file = pjoin(project_dir, 'data/HCP_1080/subject_id')
 
     with open(subject_labels_file) as rf:
         subject_labels = np.array(rf.read().split(' '), dtype=np.uint16)
 
-    with open(subjects_1080_file) as rf:
+    with open(subjects_id_file) as rf:
         subjects_1080 = np.array(rf.read().splitlines())
 
     with open(pjoin(project_dir, 'data/HCP/S1200_behavior.csv')) as f:
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     ax.set_title('Gender')
     ax.set_xlabel('subgroup label')
     ax.set_ylabel('count')
-    # plt.savefig(pjoin(n_clusters_dir, 'Gender.png'))
+    # plt.savefig(pjoin(cluster_num_dir, 'Gender.png'))
 
     width = auto_bar_width(x)
     for item in float_items:
@@ -189,7 +189,7 @@ if __name__ == '__main__':
                 print('subgroup{} vs. subgroup{} with {}:'.format(labels[i], labels[j], item),
                       ttest_ind(float_data_list[i], float_data_list[j]))
 
-        # plt.savefig(pjoin(n_clusters_dir, '{}.png'.format(item)))
+        # plt.savefig(pjoin(cluster_num_dir, '{}.png'.format(item)))
 
     # addition
     male_num_total = np.sum(male_nums)
@@ -209,7 +209,7 @@ if __name__ == '__main__':
     ax.spines['right'].set_visible(False)
     ax.set_title('1080 Gender')
     ax.set_ylabel('count')
-    # plt.savefig(pjoin(n_clusters_dir, '1080_Gender.png'))
+    # plt.savefig(pjoin(cluster_num_dir, '1080_Gender.png'))
 
     x = np.arange(label_num)
     width = auto_bar_width(x, 2)
@@ -229,7 +229,7 @@ if __name__ == '__main__':
     ax.set_title('Gender')
     ax.set_xlabel('subgroup label')
     ax.set_ylabel('percent')
-    # plt.savefig(pjoin(n_clusters_dir, 'Gender_percent.png'))
+    # plt.savefig(pjoin(cluster_num_dir, 'Gender_percent.png'))
 
     acc_item = 'WM_Task_2bk_Face_Acc'
     rt_item = 'WM_Task_2bk_Face_Median_RT'

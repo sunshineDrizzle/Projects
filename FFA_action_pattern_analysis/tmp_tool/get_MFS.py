@@ -6,9 +6,9 @@ if __name__ == '__main__':
     from commontool.io.io import CiftiReader, save2cifti
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    curv_file = pjoin(project_dir, 'data/HCP_face-avg/S1200.1080.curvature_MSMAll.32k_fs_LR.dscalar.nii')
-    aparc_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_aparc_a2009s_32k_fs_LR.dlabel.nii')
-    cluster_num_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/2clusters')
+    curv_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_curvature_MSMAll_32k_fs_LR.dscalar.nii')
+    aparc_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_aparc_a2009s_32k_fs_LR.dlabel.nii')
+    cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters')
     subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
     mfs_dir = pjoin(cluster_num_dir, 'mfs')
     if not os.path.exists(mfs_dir):

@@ -8,15 +8,15 @@ if __name__ == '__main__':
     # predefine some variates
     # -----------------------
     # predefine parameters
-    hemi = 'rh'
+    hemi = 'lh'
     brain_structure = {
         'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
     }
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    maps_file = pjoin(project_dir, 'data/HCP_face-avg/S1200_1080_WM_Mean_BOLD_Signal_MSMAll.dscalar.nii')
-    cluster_num_dir = pjoin(project_dir, '2mm_25_HAC_ward_euclidean_zscore/2clusters')
+    maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_Mean_BOLD_Signal_MSMAll_32k_fs_LR.dscalar.nii')
+    cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters')
     subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
     mean_bold_signal_dir = pjoin(cluster_num_dir, 'mean_bold_signal')
     if not os.path.exists(mean_bold_signal_dir):
