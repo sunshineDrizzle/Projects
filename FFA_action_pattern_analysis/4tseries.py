@@ -12,7 +12,7 @@ if __name__ == '__main__':
     subject_labels_file = pjoin(project_dir, 'subject_labels')
     subject_ids_file = pjoin(project_dir, 'subject_id')
     roi_files = pjoin(project_dir, '{hemi2}{label}_FFA.nii.gz')
-    out_dir = pjoin(project_dir, 'group{label}_{hemi2}FFA{roilabel}_connect_{hemi1}.nii.gz')
+    out_dir = pjoin(project_dir, 'group{label}_{hemi2}FFA{roilabel}_connect_{hemi1}_new.nii.gz')
 
     hemis = ('l', 'r')
     brain_structures = ('CIFTI_STRUCTURE_CORTEX_LEFT', 'CIFTI_STRUCTURE_CORTEX_RIGHT')
@@ -24,8 +24,9 @@ if __name__ == '__main__':
 
     for label in sorted(set(subject_labels)):
         sub_subject_ids = subject_ids[subject_labels == label]
+        sub_subject_num = len(sub_subject_ids)
         sub_connections_dict = dict()
-        for subject in sub_subject_ids:
+        for count, subject in enumerate(sub_subject_ids, 1):
             series_LR_file = series_files.format(subject=subject, phase='LR')
             series_RL_file = series_files.format(subject=subject, phase='RL')
             reader_LR = CiftiReader(series_LR_file)
@@ -43,19 +44,21 @@ if __name__ == '__main__':
                     for roi_label in roi_labels_uniq:
                         if roi_label == 0:
                             continue
-                        FFA_vertices = np.where(roi_labels_arr == roi_label)[0]
-                        FFA_series = np.mean(series[:, FFA_vertices], 1)
-                        FFA_connection = np.zeros(series.shape[1])
-                        for vtx in range(series.shape[1]):
-                            vtx_series = series[:, vtx]
-                            connect = stats.pearsonr(FFA_series, vtx_series)[0]
-                            FFA_connection[vtx] = 0 if math.isnan(connect) else connect
+                        seed_vertices = np.where(roi_labels_arr == roi_label)[0]
+                        seed_series = np.mean(series[:, seed_vertices], 1)
+                        trg_vertices_list = [[vtx] for vtx in range(series.shape[1])]
+                        connections = np.zeros(series.shape[1])
+                        for trg_vertices in trg_vertices_list:
+                            trg_series = np.mean(series[:, trg_vertices], 1)
+                            connect = stats.pearsonr(seed_series, trg_series)[0]
+                            connections[trg_vertices] = 0 if math.isnan(connect) else connect
 
                         k = (hemi_idx1, hemi_idx2, roi_label)
                         if sub_connections_dict.get(k) is None:
-                            sub_connections_dict[k] = [FFA_connection]
+                            sub_connections_dict[k] = [connections]
                         else:
-                            sub_connections_dict[k].append(FFA_connection)
-                        print(label, k)
+                            sub_connections_dict[k].append(connections)
+                        print('group{}_subject{}/{}_{}FFA{}_connect_{}'.format(label, count, sub_subject_num,
+                                                                               hemis[k[1]], k[2], hemis[k[0]]))
         for k, v in sub_connections_dict.items():
             save2nifti(out_dir.format(label=label, hemi2=hemis[k[1]], roilabel=k[2], hemi1=hemis[k[0]]), np.mean(v, 0))
