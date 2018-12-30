@@ -29,7 +29,7 @@ if __name__ == '__main__':
         os.makedirs(result_dir)
     rFFA_label = pjoin(project_dir, 'data/HCP_face-avg/label/rFFA_2mm.label')
     FSR_maps = pjoin(project_dir, 'data/HCP_face-avg/s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-    subject_labels_path = pjoin(n_clusters_dir, 'subject_labels')
+    group_labels_path = pjoin(n_clusters_dir, 'group_labels')
     # -----------------------
 
     # get data
@@ -37,8 +37,8 @@ if __name__ == '__main__':
     reader = CiftiReader(FSR_maps)
     data = reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
     rFFA_data = data[:, rFFA_vertices]
-    with open(subject_labels_path) as f:
-        subject_labels = np.array(f.read().split(' '))
+    with open(group_labels_path) as f:
+        group_labels = np.array(f.read().split(' '))
     subjects_id = [name.split('_')[0] for name in reader.map_names()]
     subjects_id = np.array(subjects_id)
 
@@ -58,11 +58,11 @@ if __name__ == '__main__':
     nums_maps = np.zeros((0, data.shape[1]))
     for idx, regroup in enumerate(regroups, 1):
         # get regroup index array
-        idx_arr = np.zeros_like(subject_labels, dtype=np.bool)
+        idx_arr = np.zeros_like(group_labels, dtype=np.bool)
         # get regroup IDs
         regroup_ids_verification = set()
         for label in regroup:
-            idx_arr = np.logical_or(idx_arr, subject_labels == str(label))
+            idx_arr = np.logical_or(idx_arr, group_labels == str(label))
             with open(pjoin(n_clusters_dir, 'subjects{}_id'.format(label))) as rf:
                 id_tmp = rf.read().splitlines()
             regroup_ids_verification.update(id_tmp)

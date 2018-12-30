@@ -88,11 +88,11 @@ if __name__ == '__main__':
     # predefine some variates
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters')
-    subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
+    group_labels_file = pjoin(cluster_num_dir, 'group_labels')
     subjects_id_file = pjoin(project_dir, 'data/HCP_1080/subject_id')
 
-    with open(subject_labels_file) as rf:
-        subject_labels = np.array(rf.read().split(' '), dtype=np.uint16)
+    with open(group_labels_file) as rf:
+        group_labels = np.array(rf.read().split(' '), dtype=np.uint16)
 
     with open(subjects_id_file) as rf:
         subjects_1080 = np.array(rf.read().splitlines())
@@ -123,10 +123,10 @@ if __name__ == '__main__':
     for item in float_items:
         float_data_dict[item] = []
 
-    labels = np.unique(subject_labels)
+    labels = np.unique(group_labels)
     label_num = len(labels)
     for label in labels:
-        subgroup_ids = subjects_1080[subject_labels == label]
+        subgroup_ids = subjects_1080[group_labels == label]
 
         behavior_dict = get_behavior_dict(subject_dict, behavior_names, subgroup_ids)
 

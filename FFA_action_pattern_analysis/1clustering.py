@@ -193,7 +193,7 @@ if __name__ == '__main__':
     for labels in labels_list:
         n_label = len(set(labels))
         labels_out = ' '.join([str(label) for label in labels])
-        with open(pjoin(clustering_result_dir, '{}subject_labels'.format(n_label)), 'w+') as wf:
+        with open(pjoin(clustering_result_dir, '{}group_labels'.format(n_label)), 'w+') as wf:
             wf.write(labels_out)
     # -----------------------
     print('Finish: do clustering')

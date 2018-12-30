@@ -26,12 +26,12 @@ if __name__ == '__main__':
     n_clusters_dir = pjoin(project_dir, '2mm_KM_init10_regress_right/3clusters')
     roi_file = pjoin(n_clusters_dir, '{}.label')
     cope_files = pjoin(project_dir, 'data/S1200_1080_WM_cope{0}_{1}_s2_MSMAll_32k_fs_LR.dscalar.nii')
-    subject_labels_path = pjoin(n_clusters_dir, 'subject_labels')
+    group_labels_path = pjoin(n_clusters_dir, 'group_labels')
     # -----------------------
 
     # get data
-    with open(subject_labels_path) as f:
-        subject_labels = np.array(f.read().split(' '))
+    with open(group_labels_path) as f:
+        group_labels = np.array(f.read().split(' '))
 
     # analyze labels
     # --------------
@@ -46,7 +46,7 @@ if __name__ == '__main__':
             cope_data_roi = cope_data[:, roi_vertices]
             if roi2label:
                 # get subgroup data
-                sub_cope_data_roi = np.atleast_2d(cope_data_roi[subject_labels == roi2label[roi]])
+                sub_cope_data_roi = np.atleast_2d(cope_data_roi[group_labels == roi2label[roi]])
                 sub_cope_data_roi_mean = np.mean(sub_cope_data_roi, axis=1)
                 cope_dict[roi][v] = sub_cope_data_roi_mean
             else:

@@ -77,8 +77,8 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
                 os.makedirs(n_clusters_dir)
 
             # create soft link to corresponding labels' file
-            labels_file = pjoin(self.clustering_result_dir, '{}subject_labels'.format(n_clusters))
-            os.system('cd {} && ln -s {} subject_labels'.format(n_clusters_dir, labels_file))
+            labels_file = pjoin(self.clustering_result_dir, '{}group_labels'.format(n_clusters))
+            os.system('cd {} && ln -s {} group_labels'.format(n_clusters_dir, labels_file))
 
             # show heatmap for rearranged data
             data_rearranged = np.zeros((0, self.data.shape[1]))
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     # -----------------------
     labels_list = []
     labels_files = [pjoin(clustering_result_dir, item) for item in os.listdir(clustering_result_dir)
-                    if 'subject_labels' in item]
+                    if 'group_labels' in item]
     for labels_file in labels_files:
         labels_list.append(np.array(open(labels_file).read().split(' '), dtype=np.uint16))
     labels_list.sort(key=lambda x: len(set(x)))

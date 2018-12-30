@@ -9,7 +9,7 @@ if __name__ == '__main__':
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering/data/HCP/tseries_test_dir'
     series_files = pjoin(project_dir, '{subject}/tfMRI_WM_{phase}_Atlas_MSMAll.dtseries.nii')
-    subject_labels_file = pjoin(project_dir, 'subject_labels')
+    group_labels_file = pjoin(project_dir, 'group_labels')
     subject_ids_file = pjoin(project_dir, 'subject_id')
     roi_files = pjoin(project_dir, '{hemi2}{label}_FFA.nii.gz')
     out_dir = pjoin(project_dir, 'group{label}_{hemi2}FFA{roilabel}_connect_{hemi1}_new.nii.gz')
@@ -17,13 +17,13 @@ if __name__ == '__main__':
     hemis = ('l', 'r')
     brain_structures = ('CIFTI_STRUCTURE_CORTEX_LEFT', 'CIFTI_STRUCTURE_CORTEX_RIGHT')
 
-    with open(subject_labels_file) as rf:
-        subject_labels = np.array(rf.read().split(' '), dtype=np.uint16)
+    with open(group_labels_file) as rf:
+        group_labels = np.array(rf.read().split(' '), dtype=np.uint16)
     with open(subject_ids_file) as rf:
         subject_ids = np.array(rf.read().splitlines())
 
-    for label in sorted(set(subject_labels)):
-        sub_subject_ids = subject_ids[subject_labels == label]
+    for label in sorted(set(group_labels)):
+        sub_subject_ids = subject_ids[group_labels == label]
         sub_subject_num = len(sub_subject_ids)
         sub_connections_dict = dict()
         for count, subject in enumerate(sub_subject_ids, 1):

@@ -212,7 +212,7 @@ class ClusteringVlineMoverPlotter(VlineMoverPlotter):
 
             # output labels
             labels_out = ' '.join([str(label) for label in labels])
-            with open(pjoin(n_clusters_dir, 'subject_labels'), 'w+') as wf:
+            with open(pjoin(n_clusters_dir, 'group_labels'), 'w+') as wf:
                 wf.write(labels_out)
 
             # show heatmap for rearranged data

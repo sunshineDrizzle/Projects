@@ -9,7 +9,7 @@ if __name__ == '__main__':
     curv_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_curvature_MSMAll_32k_fs_LR.dscalar.nii')
     aparc_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_aparc_a2009s_32k_fs_LR.dlabel.nii')
     cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters')
-    subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
+    group_labels_file = pjoin(cluster_num_dir, 'group_labels')
     mfs_dir = pjoin(cluster_num_dir, 'mfs')
     if not os.path.exists(mfs_dir):
         os.makedirs(mfs_dir)
@@ -19,14 +19,14 @@ if __name__ == '__main__':
     sulc_mask = curv_reader.get_data() < 0
     fusiform_mask = np.logical_or(aparc_reader.get_data() == 21, aparc_reader.get_data() == 96)
 
-    with open(subject_labels_file) as rf:
-        subject_labels = np.array(rf.read().split(' '), dtype=np.uint16)
+    with open(group_labels_file) as rf:
+        group_labels = np.array(rf.read().split(' '), dtype=np.uint16)
 
     mfs_prob_maps = []
     fusiform_prob_maps = []
     map_names = []
-    for label in sorted(set(subject_labels)):
-        indices = subject_labels == label
+    for label in sorted(set(group_labels)):
+        indices = group_labels == label
         subgroup_mfs_mask = np.logical_and(sulc_mask[indices], fusiform_mask[indices])
         subgroup_mfs_prob = np.mean(subgroup_mfs_mask, 0)
         subgroup_fusiform_prob = np.mean(fusiform_mask[indices], 0)

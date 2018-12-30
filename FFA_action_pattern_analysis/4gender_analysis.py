@@ -85,7 +85,7 @@ def different_activation_gender_1080(b_dict):
     plt.show()
 
 
-def different_activation_gender_subgroup(b_dict):
+def different_activation_gender_intrasubgroup(b_dict):
     # predefine some variables
     rois = [
         'l1_FFA1',
@@ -100,10 +100,10 @@ def different_activation_gender_subgroup(b_dict):
     maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
     cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters')
     roi_files = pjoin(cluster_num_dir, 'activation/{}.nii.gz')
-    subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
+    group_labels_file = pjoin(cluster_num_dir, 'group_labels')
 
-    with open(subject_labels_file) as f:
-        subject_labels = np.array(f.read().split(' '))
+    with open(group_labels_file) as f:
+        group_labels = np.array(f.read().split(' '))
 
     cifti_reader = CiftiReader(maps_file)
     lmaps = cifti_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
@@ -136,8 +136,82 @@ def different_activation_gender_subgroup(b_dict):
         else:
             raise RuntimeError("invalid roi name: {}".format(roi))
 
-        male_indices = np.logical_and(gender_labels == 'M', subject_labels == roi[1])
-        female_indices = np.logical_and(gender_labels == 'F', subject_labels == roi[1])
+        male_indices = np.logical_and(gender_labels == 'M', group_labels == roi[1])
+        female_indices = np.logical_and(gender_labels == 'F', group_labels == roi[1])
+        roi_map_means_m = np.mean(roi_maps[male_indices], 1)
+        roi_map_means_f = np.mean(roi_maps[female_indices], 1)
+        # print('the number of males about {0}: {1}'.format(roi, roi_map_means_m.shape[0]))
+        # print('the number of females about {0}: {1}'.format(roi, roi_map_means_f.shape[0]))
+        print('{0}_male vs. {0}_female: p={1}'.format(roi, ttest_ind(roi_map_means_m, roi_map_means_f)[1]))
+
+        means_m.append(np.mean(roi_map_means_m))
+        means_f.append(np.mean(roi_map_means_f))
+        sems_m.append(sem(roi_map_means_m))
+        sems_f.append(sem(roi_map_means_f))
+
+    x = np.arange(len(rois))
+    fig, ax = plt.subplots()
+    width = auto_bar_width(x, 2)
+    rects1 = ax.bar(x, means_m, width, color='b', alpha=0.5,
+                    yerr=sems_m, ecolor='blue')
+    rects2 = ax.bar(x + width, means_f, width, color='r', alpha=0.5,
+                    yerr=sems_f, ecolor='red')
+    # show_bar_value(rects1, '.3f')
+    # show_bar_value(rects2, '.3f')
+    ax.legend((rects1, rects2), ('male', 'female'))
+    ax.set_xticks(x + width/2.0)
+    ax.set_xticklabels(rois)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.set_ylabel('activation (z-stat)')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def different_activation_gender_roi2allsubgroup(b_dict):
+    # file paths
+    maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+    cluster_num_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters')
+    roi_files = pjoin(cluster_num_dir, 'activation/{hemi}{label}_FFA.nii.gz')
+    group_labels_file = pjoin(cluster_num_dir, 'group_labels')
+
+    with open(group_labels_file) as f:
+        group_labels = np.array(f.read().split(' '), dtype=np.uint16)
+
+    cifti_reader = CiftiReader(maps_file)
+    lmaps = cifti_reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
+    rmaps = cifti_reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
+    # get gender labels
+    subjects = np.array(b_dict['Subject'])
+    genders = np.array(b_dict['Gender'])
+    subjects_m = subjects[genders == 'M']
+    subjects_f = subjects[genders == 'F']
+    map2subject = [name.split('_')[0] for name in cifti_reader.map_names()]
+    gender_labels = np.zeros((len(map2subject),), dtype=np.str)
+    for idx, subj_id in enumerate(map2subject):
+        if subj_id in subjects_m:
+            gender_labels[idx] = 'M'
+        elif subj_id in subjects_f:
+            gender_labels[idx] = 'F'
+
+    means_m = []
+    means_f = []
+    sems_m = []
+    sems_f = []
+    for roi in rois:
+        roi_file = roi_files.format(roi[:-1])
+        roi_mask = nib.load(roi_file).get_data().ravel()
+        roi_vertices = np.where(roi_mask == int(roi[-1]))[0]
+        if roi[0] == 'l':
+            roi_maps = lmaps[:, roi_vertices]
+        elif roi[0] == 'r':
+            roi_maps = rmaps[:, roi_vertices]
+        else:
+            raise RuntimeError("invalid roi name: {}".format(roi))
+
+        male_indices = np.logical_and(gender_labels == 'M', group_labels == roi[1])
+        female_indices = np.logical_and(gender_labels == 'F', group_labels == roi[1])
         roi_map_means_m = np.mean(roi_maps[male_indices], 1)
         roi_map_means_f = np.mean(roi_maps[female_indices], 1)
         # print('the number of males about {0}: {1}'.format(roi, roi_map_means_m.shape[0]))
@@ -176,5 +250,6 @@ if __name__ == '__main__':
     csv_reader = CsvReader(behavior_file)
     behavior_dict = csv_reader.to_dict()
 
-    different_activation_gender_1080(behavior_dict)
-    different_activation_gender_subgroup(behavior_dict)
+    # different_activation_gender_1080(behavior_dict)
+    # different_activation_gender_intrasubgroup(behavior_dict)
+    different_activation_gender_roi2allsubgroup(behavior_dict)

@@ -5,7 +5,7 @@ from scipy import stats
 from commontool.io.io import CiftiReader
 
 
-def PA_plot(src_file, brain_structures, PAs, masks, subject_labels, axes, color, item, zscore,
+def PA_plot(src_file, brain_structures, PAs, masks, group_labels, axes, color, item, zscore,
             item_ys_dict, item_mask_values_dict):
 
     item_ys_dict[item] = np.zeros_like(axes, np.object)
@@ -21,9 +21,9 @@ def PA_plot(src_file, brain_structures, PAs, masks, subject_labels, axes, color,
         if zscore:
             PA_maps = stats.zscore(PA_maps, 1)
             mask_maps = stats.zscore(mask_maps, 1)
-        for row, label in enumerate(sorted(set(subject_labels))):
-            subgroup_PA_maps = np.atleast_2d(PA_maps[subject_labels == label])
-            subgroup_mask_maps = np.atleast_2d(mask_maps[subject_labels == label])
+        for row, label in enumerate(sorted(set(group_labels))):
+            subgroup_PA_maps = np.atleast_2d(PA_maps[group_labels == label])
+            subgroup_mask_maps = np.atleast_2d(mask_maps[group_labels == label])
             y = np.mean(subgroup_PA_maps, 0)
             mask_value = np.mean(subgroup_mask_maps, 0)
             sem = stats.sem(subgroup_PA_maps, 0)
@@ -86,14 +86,14 @@ if __name__ == '__main__':
     rh_PA_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/rFFA_25_PA.label')
     lh_mask_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/lFFA_25.label')
     rh_mask_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/rFFA_25.label')
-    subject_labels_file = pjoin(cluster_num_dir, 'subject_labels')
+    group_labels_file = pjoin(cluster_num_dir, 'group_labels')
 
     lh_PA = nib.freesurfer.read_label(lh_PA_file)[-1::-1]  # from posterior to anterior
     rh_PA = nib.freesurfer.read_label(rh_PA_file)[-1::-1]  # from posterior to anterior
     lh_mask = nib.freesurfer.read_label(lh_mask_file)
     rh_mask = nib.freesurfer.read_label(rh_mask_file)
-    with open(subject_labels_file) as rf:
-        subject_labels = np.array(rf.read().split(' '), dtype=np.uint16)
+    with open(group_labels_file) as rf:
+        group_labels = np.array(rf.read().split(' '), dtype=np.uint16)
 
     fig, axes = plt.subplots(cluster_num, 2, sharex=True)
     axes[-1, 0].set_xlabel('from posterior to anterior of lFFA')
@@ -147,7 +147,7 @@ if __name__ == '__main__':
             src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope17_TOOL_s2_MSMAll_32k_fs_LR.dscalar.nii')
         else:
             raise RuntimeError("no such item: {}".format(item))
-        PA_plot(src_file, brain_structures, PAs, masks, subject_labels, axes, item2color[item], item, zscore,
+        PA_plot(src_file, brain_structures, PAs, masks, group_labels, axes, item2color[item], item, zscore,
                 item_ys_dict, item_mask_values_dict)
 
     for row in range(axes.shape[0]):

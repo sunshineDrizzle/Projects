@@ -21,13 +21,13 @@ def save_mean_maps(src_file, hemi, cluster_nums, structure_name):
     for cluster_num in cluster_nums:
         # get clustering labels of subjects
         cluster_num_dir = cluster_num_dirs.format(cluster_num)
-        subject_labels_path = pjoin(cluster_num_dir, 'subject_labels')
-        with open(subject_labels_path) as rf:
-            subject_labels = np.array(rf.read().split(' '), dtype=np.uint16)
+        group_labels_path = pjoin(cluster_num_dir, 'group_labels')
+        with open(group_labels_path) as rf:
+            group_labels = np.array(rf.read().split(' '), dtype=np.uint16)
 
         mean_maps = np.zeros((0, maps.shape[1]))
-        for label in sorted(set(subject_labels)):
-            subgroup_maps = maps[subject_labels == label]
+        for label in sorted(set(group_labels)):
+            subgroup_maps = maps[group_labels == label]
             subgroup_maps_mean = np.atleast_2d(np.mean(subgroup_maps, 0))
             mean_maps = np.r_[mean_maps, subgroup_maps_mean]
 
