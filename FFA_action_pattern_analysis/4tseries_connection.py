@@ -5,7 +5,7 @@ if __name__ == '__main__':
 
     from os.path import join as pjoin
     from scipy import stats
-    from commontool.io.io import CiftiReader, save2nifti
+    from commontool.io.io import CiftiReader, save2niftil
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering/data/HCP/tseries_test_dir'
     series_files = pjoin(project_dir, '{subject}/tfMRI_WM_{phase}_Atlas_MSMAll.dtseries.nii')
