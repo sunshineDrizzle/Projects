@@ -27,13 +27,13 @@ def calc_mean_sem(maps, output_file, mask=None, label_names=None):
     """
     calculate mean and sem across subjects
     """
-    assert mask.ndim == 1
     vtx_num = maps.shape[1]
-    assert vtx_num == mask.shape[0]
     if mask is None:
         label_ids = list(map(str, range(vtx_num)))
         trg_vertices_list = [[vtx] for vtx in range(vtx_num)]
     else:
+        assert mask.ndim == 1
+        assert vtx_num == mask.shape[0]
         label_ids = [int(label_id) for label_id in np.unique(mask) if label_id != 0]
         trg_vertices_list = [np.where(mask == i)[0] for i in label_ids]
         label_ids = list(map(str, label_ids))
@@ -61,13 +61,13 @@ def calc_mean_sem(maps, output_file, mask=None, label_names=None):
 
 def compare(maps1, maps2, output_nifti, output_text, mask=None, label_names=None, p_thr=1.0):
     assert maps1.shape[1] == maps2.shape[1]
-    assert mask.ndim == 1
     vtx_num = maps1.shape[1]
-    assert vtx_num == mask.shape[0]
     if mask is None:
         label_ids = list(map(str, range(vtx_num)))
         trg_vertices_list = [[vtx] for vtx in range(vtx_num)]
     else:
+        assert mask.ndim == 1
+        assert vtx_num == mask.shape[0]
         label_ids = [int(label_id) for label_id in np.unique(mask) if label_id != 0]
         trg_vertices_list = [np.where(mask == i)[0] for i in label_ids]
         label_ids = list(map(str, label_ids))
@@ -82,9 +82,9 @@ def compare(maps1, maps2, output_nifti, output_text, mask=None, label_names=None
     ps = ['p']
     compare_map = np.zeros(vtx_num)
     for trg_vertices in trg_vertices_list:
-        trg_data1 = maps1[:, trg_vertices]
-        trg_data2 = maps2[:, trg_vertices]
-        t, p = ttest_ind(np.mean(trg_data1, 1), np.mean(trg_data2, 1))
+        trg_data1 = np.mean(np.atleast_2d(maps1[:, trg_vertices]), 1)
+        trg_data2 = np.mean(np.atleast_2d(maps2[:, trg_vertices]), 1)
+        t, p = ttest_ind(trg_data1, trg_data2)
         ts.append(str(t))
         ps.append(str(p))
         compare_map[trg_vertices] = t if p < p_thr else 0
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     #          'l1_FFA1_connect_l1', 'l1_FFA1_connect_l2', 'l1_FFA1_connect_r1', 'l1_FFA1_connect_r2',
     #          'l1_FFA2_connect_l1', 'l1_FFA2_connect_l2', 'l1_FFA2_connect_r1', 'l1_FFA2_connect_r2',
     #          'l2_FFA1_connect_l2', 'l2_FFA1_connect_l1', 'l2_FFA1_connect_r2', 'l2_FFA1_connect_r1']
-    # mean_sem_dir = pjoin(connect_dir, 'mean_sem_new')
+    # mean_sem_dir = pjoin(connect_dir, 'mean_sem')
     # if not os.path.exists(mean_sem_dir):
     #     os.makedirs(mean_sem_dir)
     # reader = CiftiReader('/nfs/p1/atlases/multimodal_glasser/surface/MMP_mpmLR32k.dlabel.nii')
@@ -298,33 +298,53 @@ if __name__ == '__main__':
     #     ['r1_FFA1_connect_l2', 'r2_FFA1_connect_l2', 'r1_FFA2_connect_l2'],
     #     ['r1_FFA1_connect_r2', 'r2_FFA1_connect_r2', 'r1_FFA2_connect_r2']
     # ]
-    # mean_sem_dir = pjoin(connect_dir, 'mean_sem_new')
+    # mean_sem_dir = pjoin(connect_dir, 'mean_sem')
     # for items in intersubgroup_items_list:
     #     mean_sem_files = [pjoin(mean_sem_dir, item) for item in items]
     #     plot_mean_sem(mean_sem_files, items, labels_dict[items[0][-2]], ylabel='pearson r')
     # --------------------------------------plot_mean_sem end---------------------------------------------
 
-    # acti_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation')
+    acti_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation')
+
     # items = ['l1_maps', 'l2_maps', 'r1_maps', 'r2_maps']
-    # calc_mean_sem(pjoin(project_dir, '/{item}.nii.gz'), items,
-    #               '/nfs/p1/atlases/multimodal_glasser/surface/MMP_mpmLR32k.dlabel.nii')
+    # mean_sem_dir = pjoin(acti_dir, 'mean_sem')
+    # if not os.path.exists(mean_sem_dir):
+    #     os.makedirs(mean_sem_dir)
+    # reader = CiftiReader('/nfs/p1/atlases/multimodal_glasser/surface/MMP_mpmLR32k.dlabel.nii')
+    # for item in items:
+    #     maps = np.atleast_2d(nib.load(pjoin(acti_dir, '{}.nii.gz'.format(item))).get_data())
+    #     mask = reader.get_data(brain_structure[item[0]], True).ravel()
+    #     label_ids = [int(label_id) for label_id in np.unique(mask) if label_id != 0]
+    #     label_names = [reader.label_tables()[0][i].label for i in label_ids]
+    #     calc_mean_sem(maps, pjoin(mean_sem_dir, item), mask, label_names)
+    #
+
+    item_pairs = [
+        ['l1_maps', 'l2_maps'],
+        ['r1_maps', 'r2_maps']
+    ]
+    compare_dir = pjoin(acti_dir, 'compare_vertex_wise')
+    if not os.path.exists(compare_dir):
+        os.makedirs(compare_dir)
+    for item1, item2 in item_pairs:
+        maps1 = np.atleast_2d(nib.load(pjoin(acti_dir, '{}.nii.gz'.format(item1))).get_data())
+        maps2 = np.atleast_2d(nib.load(pjoin(acti_dir, '{}.nii.gz'.format(item2))).get_data())
+        compare(maps1, maps2, pjoin(compare_dir, '{}_vs_{}_p0_05.nii.gz'.format(item1, item2)),
+                pjoin(compare_dir, '{}_vs_{}'.format(item1, item2)), p_thr=0.05)
+
+    # for item1, item2 in item_pairs:
+    #     plot_compare(pjoin(compare_dir, '{}_vs_{}'.format(item1, item2)), p_thr=0.05)
     #
     # items_list = [
-    #     ['maps_l1', 'maps_l2'],
-    #     ['maps_r1', 'maps_r2']
+    #     ['l1_maps', 'l2_maps'],
+    #     ['r1_maps', 'r2_maps']
     # ]
+    # mean_sem_dir = pjoin(acti_dir, 'mean_sem_glasser_mmp')
+    # compare_dir = pjoin(acti_dir, 'compare_glasser_mmp')
     # for items in items_list:
-    #     plot_mean_sem(pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation/mean_sem/{}'),
-    #                   items)
-    #
-    # acti_items = [
-    #     ['maps_l1', 'maps_l2'],
-    #     ['maps_r1', 'maps_r2']
-    # ]
-    # compare(pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation/{item}.nii.gz'),
-    #         acti_items,
-    #         '/nfs/p1/atlases/multimodal_glasser/surface/MMP_mpmLR32k.dlabel.nii', p_thr=0.05)
-    #
-    # for item0, item1 in acti_items:
-    #     plot_compare(pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation/compare/{}_vs_{}'.format(item0, item1)),
-    #                  p_thr=0.05)
+    #     compare_file = pjoin(compare_dir, '{}_vs_{}'.format(items[0], items[1]))
+    #     compare_dict = CsvReader(compare_file).to_dict(1)
+    #     label_ids = compare_dict['label_id']
+    #     label_ids = [i for i in label_ids if float(compare_dict['p'][compare_dict['label_id'].index(i)]) < 0.05]
+    #     mean_sem_files = [pjoin(mean_sem_dir, item) for item in items]
+    #     plot_mean_sem(mean_sem_files, items, label_ids, ylabel='activation (z-stats)')
