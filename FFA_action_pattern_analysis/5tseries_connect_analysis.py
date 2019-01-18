@@ -131,6 +131,7 @@ def plot_mean_sem(mean_sem_files, items=None, label_ids=None, xlabel='', ylabel=
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     plt.setp(ax.get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
+    # plt.ylim(bottom=5.5)
 
     plt.tight_layout()
     plt.show()
@@ -178,6 +179,8 @@ def plot_compare(compare_file, label_ids=None, p_thr=None):
 
 
 if __name__ == '__main__':
+    from statsmodels.stats.multitest import multipletests
+    # https://www.statsmodels.org/dev/_modules/statsmodels/stats/multitest.html
 
     brain_structure = {
         'l': 'CIFTI_STRUCTURE_CORTEX_LEFT',
@@ -305,46 +308,113 @@ if __name__ == '__main__':
     # --------------------------------------plot_mean_sem end---------------------------------------------
 
     acti_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation')
+    repre_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/representation')
+    mask_files = {
+        'l': pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/PAM_z165_p025_ROI_l.nii.gz'),
+        'r': pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/PAM_z165_p025_ROI_r.nii.gz')
+    }
+    labelconfig_files = {
+        'l': pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/PAM_z165_p025_ROI_labelconfig_l.csv'),
+        'r': pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/PAM_z165_p025_ROI_labelconfig_r.csv')
+    }
 
+    # ---activation magnitude start---
     # items = ['l1_maps', 'l2_maps', 'r1_maps', 'r2_maps']
-    # mean_sem_dir = pjoin(acti_dir, 'mean_sem')
+    # mean_sem_dir = pjoin(acti_dir, 'mean_sem_PAM_z165_p025')
     # if not os.path.exists(mean_sem_dir):
     #     os.makedirs(mean_sem_dir)
-    # reader = CiftiReader('/nfs/p1/atlases/multimodal_glasser/surface/MMP_mpmLR32k.dlabel.nii')
     # for item in items:
     #     maps = np.atleast_2d(nib.load(pjoin(acti_dir, '{}.nii.gz'.format(item))).get_data())
-    #     mask = reader.get_data(brain_structure[item[0]], True).ravel()
-    #     label_ids = [int(label_id) for label_id in np.unique(mask) if label_id != 0]
-    #     label_names = [reader.label_tables()[0][i].label for i in label_ids]
+    #     mask = nib.load(mask_files[item[0]]).get_data().ravel()
+    #     labelconfig = CsvReader(labelconfig_files[item[0]]).to_dict()
+    #     label_names = labelconfig['label_name']
     #     calc_mean_sem(maps, pjoin(mean_sem_dir, item), mask, label_names)
-    #
 
-    item_pairs = [
-        ['l1_maps', 'l2_maps'],
-        ['r1_maps', 'r2_maps']
-    ]
-    compare_dir = pjoin(acti_dir, 'compare_vertex_wise')
-    if not os.path.exists(compare_dir):
-        os.makedirs(compare_dir)
-    for item1, item2 in item_pairs:
-        maps1 = np.atleast_2d(nib.load(pjoin(acti_dir, '{}.nii.gz'.format(item1))).get_data())
-        maps2 = np.atleast_2d(nib.load(pjoin(acti_dir, '{}.nii.gz'.format(item2))).get_data())
-        compare(maps1, maps2, pjoin(compare_dir, '{}_vs_{}_p0_05.nii.gz'.format(item1, item2)),
-                pjoin(compare_dir, '{}_vs_{}'.format(item1, item2)), p_thr=0.05)
-
-    # for item1, item2 in item_pairs:
-    #     plot_compare(pjoin(compare_dir, '{}_vs_{}'.format(item1, item2)), p_thr=0.05)
-    #
-    # items_list = [
+    # item_pairs = [
     #     ['l1_maps', 'l2_maps'],
     #     ['r1_maps', 'r2_maps']
     # ]
-    # mean_sem_dir = pjoin(acti_dir, 'mean_sem_glasser_mmp')
-    # compare_dir = pjoin(acti_dir, 'compare_glasser_mmp')
+    # compare_dir = pjoin(acti_dir, 'compare_PAM_z165_p025')
+    # if not os.path.exists(compare_dir):
+    #     os.makedirs(compare_dir)
+    # for item1, item2 in item_pairs:
+    #     maps1 = np.atleast_2d(nib.load(pjoin(acti_dir, '{}.nii.gz'.format(item1))).get_data())
+    #     maps2 = np.atleast_2d(nib.load(pjoin(acti_dir, '{}.nii.gz'.format(item2))).get_data())
+    #     mask = nib.load(mask_files[item1[0]]).get_data().ravel()
+    #     labelconfig = CsvReader(labelconfig_files[item1[0]]).to_dict()
+    #     label_names = labelconfig['label_name']
+    #     compare(maps1, maps2, pjoin(compare_dir, '{}_vs_{}.nii.gz'.format(item1, item2)),
+    #             pjoin(compare_dir, '{}_vs_{}'.format(item1, item2)), mask, label_names)
+
+    # for item1, item2 in item_pairs:
+    #     plot_compare(pjoin(compare_dir, '{}_vs_{}'.format(item1, item2)), p_thr=0.05)
+
+    items_list = [
+        ['l1_maps', 'l2_maps'],
+        ['r1_maps', 'r2_maps']
+    ]
+    mean_sem_dir = pjoin(acti_dir, 'mean_sem_PAM_z165_p025')
+    compare_dir = pjoin(acti_dir, 'compare_PAM_z165_p025')
+    for items in items_list:
+        compare_file = pjoin(compare_dir, '{}_vs_{}'.format(items[0], items[1]))
+        compare_dict = CsvReader(compare_file).to_dict(1)
+        p_uncorrected = np.array(list(map(float, compare_dict['p'])))
+        reject, p_corrected, alpha_sidak, alpha_bonf = multipletests(p_uncorrected, 0.05, 'fdr_bh')
+        print('p_uncorrected:', p_uncorrected)
+        print('p_corrected:', p_corrected)
+        label_ids = compare_dict['label_id']
+        label_ids = [i for i in label_ids if float(compare_dict['p'][compare_dict['label_id'].index(i)]) < 1]
+        mean_sem_files = [pjoin(mean_sem_dir, item) for item in items]
+        plot_mean_sem(mean_sem_files, items, label_ids, ylabel='activation (z-stats)')
+    # ---activation magnitude end---
+
+    # ---activation pattern start---
+    # items = ['lh_intra_subgroup_dissimilarity', 'lh_inter_subgroup_dissimilarity',
+    #          'rh_intra_subgroup_dissimilarity', 'rh_inter_subgroup_dissimilarity']
+    # mean_sem_dir = pjoin(repre_dir, 'mean_sem_PAM_z165_p025')
+    # if not os.path.exists(mean_sem_dir):
+    #     os.makedirs(mean_sem_dir)
+    # for item in items:
+    #     maps = np.atleast_2d(nib.load(pjoin(repre_dir, '{}.nii.gz'.format(item))).get_data())
+    #     mask = nib.load(mask_files[item[0]]).get_data().ravel()
+    #     labelconfig = CsvReader(labelconfig_files[item[0]]).to_dict()
+    #     label_names = labelconfig['label_name']
+    #     calc_mean_sem(maps, pjoin(mean_sem_dir, item), mask, label_names)
+
+    # item_pairs = [
+    #     ['lh_intra_subgroup_dissimilarity', 'lh_inter_subgroup_dissimilarity'],
+    #     ['rh_intra_subgroup_dissimilarity', 'rh_inter_subgroup_dissimilarity']
+    # ]
+    # compare_dir = pjoin(repre_dir, 'compare_PAM_z165_p025')
+    # if not os.path.exists(compare_dir):
+    #     os.makedirs(compare_dir)
+    # for item1, item2 in item_pairs:
+    #     maps1 = np.atleast_2d(nib.load(pjoin(repre_dir, '{}.nii.gz'.format(item1))).get_data())
+    #     maps2 = np.atleast_2d(nib.load(pjoin(repre_dir, '{}.nii.gz'.format(item2))).get_data())
+    #     mask = nib.load(mask_files[item1[0]]).get_data().ravel()
+    #     labelconfig = CsvReader(labelconfig_files[item1[0]]).to_dict()
+    #     label_names = labelconfig['label_name']
+    #     compare(maps1, maps2, pjoin(compare_dir, '{}_vs_{}.nii.gz'.format(item1, item2)),
+    #             pjoin(compare_dir, '{}_vs_{}'.format(item1, item2)), mask, label_names)
+
+    # for item1, item2 in item_pairs:
+    #     plot_compare(pjoin(compare_dir, '{}_vs_{}'.format(item1, item2)), p_thr=0.1)
+
+    # items_list = [
+    #     ['lh_intra_subgroup_dissimilarity', 'lh_inter_subgroup_dissimilarity'],
+    #     ['rh_intra_subgroup_dissimilarity', 'rh_inter_subgroup_dissimilarity']
+    # ]
+    # mean_sem_dir = pjoin(repre_dir, 'mean_sem_PAM_z165_p025')
+    # compare_dir = pjoin(repre_dir, 'compare_PAM_z165_p025')
     # for items in items_list:
     #     compare_file = pjoin(compare_dir, '{}_vs_{}'.format(items[0], items[1]))
     #     compare_dict = CsvReader(compare_file).to_dict(1)
+    #     p_uncorrected = np.array(list(map(float, compare_dict['p'])))
+    #     reject, p_corrected, alpha_sidak, alpha_bonf = multipletests(p_uncorrected, 0.05, 'fdr_bh')
+    #     print('p_uncorrected:', p_uncorrected)
+    #     print('p_corrected:', p_corrected)
     #     label_ids = compare_dict['label_id']
-    #     label_ids = [i for i in label_ids if float(compare_dict['p'][compare_dict['label_id'].index(i)]) < 0.05]
+    #     label_ids = [i for i in label_ids if p_uncorrected[compare_dict['label_id'].index(i)] < 1]
     #     mean_sem_files = [pjoin(mean_sem_dir, item) for item in items]
-    #     plot_mean_sem(mean_sem_files, items, label_ids, ylabel='activation (z-stats)')
+    #     plot_mean_sem(mean_sem_files, items, label_ids, ylabel='euclidean')
+    # ---activation pattern end---

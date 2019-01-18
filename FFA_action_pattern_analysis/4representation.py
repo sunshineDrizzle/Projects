@@ -25,6 +25,8 @@ def subgroup_mean_representation(pattern_mean_maps, FFA_vertices, FFA_patterns, 
         axes[row].set_ylabel(metric)
         axes[row].set_xticks(np.arange(1, labels_num + 1))
         axes[row].set_xticklabels([xlabels.format(labels_uniq[row], labels_uniq[col]) for col in range(labels_num)])
+    plt.tight_layout()
+    plt.show()
 
 
 def leave_one_out_representation(FFA_patterns, group_labels, metric):
@@ -59,6 +61,10 @@ def leave_one_out_representation(FFA_patterns, group_labels, metric):
         axes[row].set_ylabel(metric)
         axes[row].set_xticks(np.arange(1, labels_num + 1))
         axes[row].set_xticklabels([xlabels.format(labels_uniq[row], labels_uniq[col]) for col in range(labels_num)])
+    plt.tight_layout()
+    plt.show()
+
+    return X
 
 
 if __name__ == '__main__':
@@ -66,25 +72,64 @@ if __name__ == '__main__':
 
     from os.path import join as pjoin
 
-    hemi = 'lh'
+    hemi = 'rh'
     metric = 'euclidean'
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering/'
     analysis_dir = pjoin(project_dir, 's2_25_zscore')
     cluster_num_dir = pjoin(analysis_dir, 'HAC_ward_euclidean/2clusters')
     acti_dir = pjoin(cluster_num_dir, 'activation')
 
-    pattern_mean_maps_file = pjoin(acti_dir, '{}_pattern_mean_maps.nii.gz'.format(hemi))
-    FFA_label_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label'.format(hemi[0]))
-    FFA_patterns_file = pjoin(analysis_dir, '{}FFA_patterns.nii.gz'.format(hemi[0]))
+    # pattern_mean_maps_file = pjoin(acti_dir, '{}_pattern_mean_maps.nii.gz'.format(hemi))
+    # FFA_label_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label'.format(hemi[0]))
+    # FFA_patterns_file = pjoin(analysis_dir, '{}FFA_patterns.nii.gz'.format(hemi[0]))
     group_labels_file = pjoin(cluster_num_dir, 'group_labels')
 
-    pattern_mean_maps = nib.load(pattern_mean_maps_file).get_data()
-    FFA_vertices = nib.freesurfer.read_label(FFA_label_file)
-    FFA_patterns = nib.load(FFA_patterns_file).get_data()
+    # pattern_mean_maps = nib.load(pattern_mean_maps_file).get_data()
+    # FFA_vertices = nib.freesurfer.read_label(FFA_label_file)
+    # FFA_patterns = nib.load(FFA_patterns_file).get_data()
     group_labels = np.array(open(group_labels_file).read().split(' '), dtype=np.uint16)
 
     # subgroup_mean_representation(pattern_mean_maps, FFA_vertices, FFA_patterns, group_labels, metric)
-    leave_one_out_representation(FFA_patterns, group_labels, metric)
+    # leave_one_out_representation(FFA_patterns, group_labels, metric)
 
-    plt.tight_layout()
-    plt.show()
+    # For other ROIs
+    from commontool.io.io import CiftiReader, save2nifti
+    from FFA_action_pattern_analysis.tmp_tool.get_roi_pattern import get_roi_pattern
+
+    acti_maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+    mask_files = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/PAM_z165_p025_ROI_{}.nii.gz')
+
+    if hemi == 'lh':
+        acti_maps = CiftiReader(acti_maps_file).get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True)
+        mask = nib.load(mask_files.format(hemi[0])).get_data().ravel()
+    elif hemi == 'rh':
+        acti_maps = CiftiReader(acti_maps_file).get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True)
+        mask = nib.load(mask_files.format(hemi[0])).get_data().ravel()
+    else:
+        raise RuntimeError("hemi error!")
+
+    ROIs = [np.where(mask == i)[0] for i in np.unique(mask) if i != 0]
+    intra_subgroup_dissimilarity = None
+    inter_subgroup_dissimilarity = None
+    for roi in ROIs:
+        patterns = get_roi_pattern(acti_maps, roi, True)
+        X = leave_one_out_representation(patterns, group_labels, metric)
+        row_num, col_num = X.shape
+        intra_tmp = []
+        inter_tmp = []
+        for row in range(row_num):
+            for col in range(col_num):
+                if row == col:
+                    intra_tmp.extend(X[row, col])
+                else:
+                    inter_tmp.extend(X[row, col])
+        if intra_subgroup_dissimilarity is None:
+            intra_subgroup_dissimilarity = np.zeros((len(intra_tmp), acti_maps.shape[1]))
+        if inter_subgroup_dissimilarity is None:
+            inter_subgroup_dissimilarity = np.zeros((len(intra_tmp), acti_maps.shape[1]))
+        intra_subgroup_dissimilarity[:, roi] = np.atleast_2d(np.array(intra_tmp)).T
+        inter_subgroup_dissimilarity[:, roi] = np.atleast_2d(np.array(inter_tmp)).T
+
+    repre_dir = pjoin(cluster_num_dir, 'representation')
+    save2nifti(pjoin(repre_dir, '{}_intra_subgroup_dissimilarity.nii.gz'.format(hemi)), intra_subgroup_dissimilarity)
+    save2nifti(pjoin(repre_dir, '{}_inter_subgroup_dissimilarity.nii.gz'.format(hemi)), inter_subgroup_dissimilarity)
