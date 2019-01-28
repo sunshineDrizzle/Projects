@@ -8,8 +8,8 @@ if __name__ == '__main__':
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     connect_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/rfMRI_connectivity/PAM_z165_p025_ROI')
-    subject_ids_file = pjoin(connect_dir, 'subject_id1_4run_1200')
-    output_file = pjoin(connect_dir, 'subgroup1_connectivity.npy')
+    subject_ids_file = pjoin(connect_dir, 'subject_id2_4run_1200')
+    output_file = pjoin(connect_dir, 'subgroup2_connectivity.npy')
     tseries_LR_file = pjoin(connect_dir, '{subject}/rfMRI_REST1_LR.npy')
     tseries_RL_file = pjoin(connect_dir, '{subject}/rfMRI_REST1_RL.npy')
 
