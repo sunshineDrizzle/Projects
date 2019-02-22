@@ -8,14 +8,14 @@ if __name__ == '__main__':
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     connect_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/rfMRI_connectivity/PAM_z165_p025_ROI')
-    subject_ids_file = pjoin(connect_dir, 'subject_id2_4run_1200')
-    output_file = pjoin(connect_dir, 'subgroup2_connectivity.npy')
+    subject_ids_file = pjoin(connect_dir, 'subject_id_4run_1200')
+    output_file = pjoin(connect_dir, 'connectivity.npy')
     tseries_LR_file = pjoin(connect_dir, '{subject}/rfMRI_REST1_LR.npy')
     tseries_RL_file = pjoin(connect_dir, '{subject}/rfMRI_REST1_RL.npy')
 
     subject_ids = np.array(open(subject_ids_file).read().splitlines())
 
-    subgroup_connectivity = []
+    connectivity = []
     for subject in subject_ids:
         tseries_LR = np.load(tseries_LR_file.format(subject=subject))
         tseries_RL = np.load(tseries_RL_file.format(subject=subject))
@@ -29,6 +29,6 @@ if __name__ == '__main__':
                 r = stats.pearsonr(tseries[i], tseries[j])[0]
                 subject_connectivity[i, j] = r
                 subject_connectivity[j, i] = r
-        subgroup_connectivity.append(subject_connectivity)
+        connectivity.append(subject_connectivity)
         print(subject)
-    np.save(output_file, np.array(subgroup_connectivity))
+    np.save(output_file, np.array(connectivity))
