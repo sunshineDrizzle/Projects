@@ -18,16 +18,21 @@ def PA_plot(src_file, brain_structures, PAs, masks, group_labels, axes, color, i
         data = reader.get_data(brain_structures[col], True)
         PA_maps = data[:, PA]
         mask_maps = data[:, mask]
-        if zscore:
-            PA_maps = stats.zscore(PA_maps, 1)
-            mask_maps = stats.zscore(mask_maps, 1)
+        # if zscore:
+        #     PA_maps = stats.zscore(PA_maps, 1)
+        #     mask_maps = stats.zscore(mask_maps, 1)
         for row, label in enumerate(sorted(set(group_labels))):
             subgroup_PA_maps = np.atleast_2d(PA_maps[group_labels == label])
             subgroup_mask_maps = np.atleast_2d(mask_maps[group_labels == label])
             y = np.mean(subgroup_PA_maps, 0)
             mask_value = np.mean(subgroup_mask_maps, 0)
-            sem = stats.sem(subgroup_PA_maps, 0)
-            axes[row, col].errorbar(x, y, yerr=sem, color=color, label=item)
+            if zscore:
+                y = stats.zscore(y)
+                mask_value = stats.zscore(mask_value)
+                axes[row, col].errorbar(x, y, color=color, label=item)
+            else:
+                sem = stats.sem(subgroup_PA_maps, 0)
+                axes[row, col].errorbar(x, y, yerr=sem, color=color, label=item)
             axes[row, col].set_title(label)
             item_ys_dict[item][row, col] = y
             item_mask_values_dict[item][row, col] = mask_value
@@ -37,7 +42,7 @@ def inter_subgroup_corr(item_ys_dict, item):
     ys = item_ys_dict[item]
     print('\ninter_subgroup_corr of {}:'.format(item))
     for col in range(ys.shape[1]):
-        print("(0, {0}) vs. (1, {0}):".format(col), stats.pearsonr(ys[0, col], ys[1, col]))
+        print("(1, {0}) corr. (2, {0}):".format(col+1), stats.pearsonr(ys[0, col], ys[1, col]))
 
 
 def inter_item_corr(item_ys_dict, item1, item2):
@@ -46,7 +51,7 @@ def inter_item_corr(item_ys_dict, item1, item2):
     print('\ninter_item_corr between {} and {}:'.format(item1, item2))
     for row in range(ys1.shape[0]):
         for col in range(ys1.shape[1]):
-            print('({}, {}):'.format(row, col), stats.pearsonr(ys1[row, col], ys2[row, col]))
+            print('({}, {}):'.format(row+1, col+1), stats.pearsonr(ys1[row, col], ys2[row, col]))
 
 
 if __name__ == '__main__':
@@ -56,17 +61,17 @@ if __name__ == '__main__':
     cluster_num = 2
     items = [
         # 'pattern',
-        'face-avg',
-        'curvature',
-        'thickness',
-        'myelin',
-        # 'mean_bold_signal',
+        # 'face-avg',
+        # 'curvature',
+        # 'thickness',
+        # 'myelin',
+        'mean_bold_signal',
         # 'body',
         # 'face',
         # 'place',
         # 'tool',
     ]
-    zscore = True
+    zscore = False
     item2color = {
         'pattern': 'k',
         'face-avg': 'y',
@@ -154,11 +159,13 @@ if __name__ == '__main__':
         for col in range(axes.shape[1]):
             axes[row, col].legend()
 
-    inter_subgroup_corr(item_mask_values_dict, 'face-avg')
-    inter_subgroup_corr(item_mask_values_dict, 'curvature')
-    inter_subgroup_corr(item_mask_values_dict, 'thickness')
-    inter_subgroup_corr(item_mask_values_dict, 'myelin')
-    # inter_item_corr(item_ys_dict, 'activation', 'face-avg')
+    # inter_subgroup_corr(item_mask_values_dict, 'face-avg')
+    # inter_subgroup_corr(item_mask_values_dict, 'curvature')
+    # inter_subgroup_corr(item_mask_values_dict, 'thickness')
+    # inter_subgroup_corr(item_mask_values_dict, 'myelin')
+    # inter_item_corr(item_ys_dict, 'face-avg', 'mean_bold_signal')
+    # inter_subgroup_corr(item_ys_dict, 'mean_bold_signal')
+    # inter_subgroup_corr(item_ys_dict, 'face-avg')
 
     plt.tight_layout()
     plt.show()

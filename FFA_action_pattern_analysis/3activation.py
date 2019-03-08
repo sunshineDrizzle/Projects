@@ -9,8 +9,8 @@ if __name__ == '__main__':
     # predefine some variates
     # -----------------------
     # predefine parameters
-    cluster_nums = [2]
-    hemi = 'rh'
+    cluster_nums = [1]
+    hemi = 'lh'
     brain_structure = {
         'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
@@ -24,17 +24,18 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    analysis_dir = pjoin(project_dir, 's2_25_zscore')
+    analysis_dir = pjoin(project_dir, 'LiuLab_zscore')
     cluster_num_dirs = pjoin(analysis_dir, 'HAC_ward_euclidean/{}clusters')
-    FFA_label_files = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label')
-    maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+    FFA_label_files = pjoin(project_dir, 'data/LiuLab_face-avg/label/{}FFA.label')
+    maps_file = pjoin(project_dir, 'data/LiuLab_face-avg/LiuLab_495_FACE-AVG_zstat_fsaverage_{}.nii.gz')
     FFA_pattern_files = pjoin(analysis_dir, '{}FFA_patterns.nii.gz')
     # -----------------------
 
     # get data
     FFA_vertices = nib.freesurfer.read_label(FFA_label_files.format(hemi[0]))
-    reader = CiftiReader(maps_file)
-    maps = reader.get_data(brain_structure[hemi], True)
+    # reader = CiftiReader(maps_file)
+    # maps = reader.get_data(brain_structure[hemi], True)
+    maps = nib.load(maps_file.format(hemi)).get_data()
     FFA_patterns = nib.load(FFA_pattern_files.format(hemi[0])).get_data()
 
     # analyze labels
@@ -87,7 +88,7 @@ if __name__ == '__main__':
             pattern_mean_map[:, FFA_vertices] = subgroup_FFA_patterns_mean
             pattern_mean_maps = np.r_[pattern_mean_maps, pattern_mean_map]
 
-            save2nifti(pjoin(activation_dir, '{}{}_maps.nii.gz'.format(hemi[0], label)), subgroup_maps)
+            # save2nifti(pjoin(activation_dir, '{}{}_maps.nii.gz'.format(hemi[0], label)), subgroup_maps)
 
         max_num_map = np.argmax(num_maps, 0) + 1
         max_prob_map = np.argmax(prob_maps, 0) + 1
@@ -103,22 +104,22 @@ if __name__ == '__main__':
         # output maps
         header = nib.Nifti2Header()
         header['descrip'] = 'FreeROI label'
-        # save2nifti(pjoin(activation_dir, '{}_mean_maps.nii.gz'.format(hemi)), mean_maps)
-        # save2nifti(pjoin(activation_dir, '{}_prob_maps_z{}.nii.gz'.format(hemi, acti_thr)), prob_maps)
+        save2nifti(pjoin(activation_dir, '{}_mean_maps.nii.gz'.format(hemi)), mean_maps)
+        save2nifti(pjoin(activation_dir, '{}_prob_maps_z{}.nii.gz'.format(hemi, acti_thr)), prob_maps)
         # save2nifti(pjoin(activation_dir, 'max_num_map_z{}.nii.gz'.format(acti_thr)), max_num_map)
         # save2nifti(pjoin(activation_dir, 'max_prob_map_z{}.nii.gz'.format(acti_thr)), max_prob_map)
         # save2nifti(pjoin(activation_dir, 'top_prob_ROIs_z{}_p{}.nii.gz'.format(acti_thr, prob_thr)), top_prob_ROIs)
-        # save2nifti(pjoin(activation_dir, '{}_top_acti_ROIs_percent{}.nii.gz'.format(hemi, int(top_acti_percent*100))),
-        #            top_acti_ROIs, header=header)
-        # save2nifti(pjoin(activation_dir, '{}_pattern_mean_maps.nii.gz'.format(hemi)), pattern_mean_maps)
+        save2nifti(pjoin(activation_dir, '{}_top_acti_ROIs_percent{}.nii.gz'.format(hemi, int(top_acti_percent*100))),
+                   top_acti_ROIs, header=header)
+        save2nifti(pjoin(activation_dir, '{}_pattern_mean_maps.nii.gz'.format(hemi)), pattern_mean_maps)
 
         # output statistics
-        # with open(pjoin(activation_dir, '{}_statistics.csv'.format(hemi)), 'w+') as f:
-        #     f.write(','.join(stats_table_titles) + '\n')
-        #     lines = []
-        #     for title in stats_table_titles:
-        #         lines.append(stats_table_content[title])
-        #     for line in zip(*lines):
-        #         f.write(','.join(line) + '\n')
+        with open(pjoin(activation_dir, '{}_statistics.csv'.format(hemi)), 'w+') as f:
+            f.write(','.join(stats_table_titles) + '\n')
+            lines = []
+            for title in stats_table_titles:
+                lines.append(stats_table_content[title])
+            for line in zip(*lines):
+                f.write(','.join(line) + '\n')
 
         print('{}clusters: done'.format(cluster_num))

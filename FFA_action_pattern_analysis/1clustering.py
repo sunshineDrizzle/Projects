@@ -138,11 +138,11 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    analysis_dir = pjoin(project_dir, 's2_25_zscore')
+    analysis_dir = pjoin(project_dir, 'LiuLab_zscore')
     clustering_result_dir = pjoin(analysis_dir, '{}/clustering_results'.format(clustering_method))
     if not os.path.exists(clustering_result_dir):
         os.makedirs(clustering_result_dir)
-    FFA_label_files = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label')
+    FFA_label_files = pjoin(project_dir, 'data/LiuLab_face-avg/label/{}FFA.label')
     FFA_pattern_files = pjoin(analysis_dir, '{}FFA_patterns.nii.gz')
     # -----------------------
     print('Finish: predefine some variates')

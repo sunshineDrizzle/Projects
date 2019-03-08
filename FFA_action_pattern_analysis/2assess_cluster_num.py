@@ -151,11 +151,11 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    analysis_dir = pjoin(project_dir, 's2_25_zscore')
+    analysis_dir = pjoin(project_dir, 'LiuLab_zscore')
     clustering_dir = pjoin(analysis_dir, clustering_method)
     clustering_result_dir = pjoin(clustering_dir, 'clustering_results')
-    FFA_label_files = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label')
-    maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+    FFA_label_files = pjoin(project_dir, 'data/LiuLab_face-avg/label/{}FFA.label')
+    maps_file = pjoin(project_dir, 'data/LiuLab_face-avg/LiuLab_495_FACE-AVG_zstat_fsaverage_{}.nii.gz')
     FFA_pattern_files = pjoin(analysis_dir, '{}FFA_patterns.nii.gz')
     # -----------------------
     print('Finish: predefine some variates')
@@ -163,19 +163,22 @@ if __name__ == '__main__':
     print('Start: prepare data')
     # -----------------------
     # prepare FFA patterns
-    reader = CiftiReader(maps_file)
+    # reader = CiftiReader(maps_file)
     if hemi == 'both':
         lFFA_vertices = nib.freesurfer.read_label(FFA_label_files.format('l'))
         rFFA_vertices = nib.freesurfer.read_label(FFA_label_files.format('r'))
-        lFFA_maps = reader.get_data(brain_structure['lh'], True)[:, lFFA_vertices]
-        rFFA_maps = reader.get_data(brain_structure['rh'], True)[:, rFFA_vertices]
+        # lFFA_maps = reader.get_data(brain_structure['lh'], True)[:, lFFA_vertices]
+        # rFFA_maps = reader.get_data(brain_structure['rh'], True)[:, rFFA_vertices]
+        lFFA_maps = nib.load(maps_file.format('lh')).get_data()[:, lFFA_vertices]
+        rFFA_maps = nib.load(maps_file.format('rh')).get_data()[:, rFFA_vertices]
         FFA_maps = np.c_[lFFA_maps, rFFA_maps]
         lFFA_patterns = nib.load(FFA_pattern_files.format('l')).get_data()
         rFFA_patterns = nib.load(FFA_pattern_files.format('r')).get_data()
         FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
     else:
         FFA_vertices = nib.freesurfer.read_label(FFA_label_files.format(hemi[0]))
-        FFA_maps = reader.get_data(brain_structure[hemi], True)[:, FFA_vertices]
+        # FFA_maps = reader.get_data(brain_structure[hemi], True)[:, FFA_vertices]
+        FFA_maps = nib.load(maps_file.format(hemi)).get_data()[:, FFA_vertices]
         FFA_patterns = nib.load(FFA_pattern_files.format(hemi[0])).get_data()
     # -----------------------
     print('Finish: prepare data')

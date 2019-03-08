@@ -7,8 +7,8 @@ if __name__ == '__main__':
     from matplotlib import pyplot as plt
     from scipy.stats.stats import ttest_ind
 
-    item1 = 'acti_corr_MBS_rFFA_1080'
-    item2 = 'g1_MBS_corr_g2_MBS_rFFA'
+    item1 = 'g2_acti_corr_g1_MBS_rFFA'
+    item2 = 'g2_acti_corr_g2_MBS_rFFA'
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     corr_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/pattern_corr')
     corr_file1 = pjoin(corr_dir, '{}.npy'.format(item1))

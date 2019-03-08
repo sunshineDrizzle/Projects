@@ -70,7 +70,7 @@ if __name__ == '__main__':
     import nibabel as nib
 
     from os.path import join as pjoin
-    from commontool.io.io import CiftiReader, GiftiReader, save2nifti
+    from commontool.io.io import save2nifti
 
     print('Start: predefine some variates')
     # -----------------------
@@ -82,33 +82,37 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    analysis_dir = pjoin(project_dir, 's2_25_zscore')
+    analysis_dir = pjoin(project_dir, 'LiuLab_zscore')
     if not os.path.exists(analysis_dir):
         os.makedirs(analysis_dir)
-    FFA_label_files = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label')
-    maps_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
-    geo_files = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
-                'HCP_S1200_GroupAvg_v1/S1200.{}.white_MSMAll.32k_fs_LR.surf.gii'
+    FFA_label_files = pjoin(project_dir, 'data/LiuLab_face-avg/label/{}FFA.label')
+    maps_file = pjoin(project_dir, 'data/LiuLab_face-avg/LiuLab_495_FACE-AVG_zstat_fsaverage_{}.nii.gz')
+    # geo_files = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
+    #             'HCP_S1200_GroupAvg_v1/S1200.{}.white_MSMAll.32k_fs_LR.surf.gii'
+    geo_files = None
     # mask_file = pjoin(project_dir, 'data/HCP_face-avg/s2/patches_15/crg2.3/{}FFA_patch_maps_lt15.nii.gz')
     mask_file = None
     # -----------------------
     print('Finish: predefine some variates')
 
-    reader = CiftiReader(maps_file)
     if mask_file is not None:
         lh_mask = nib.load(mask_file.format('l')).get_data() != 0
         rh_mask = nib.load(mask_file.format('r')).get_data() != 0
     else:
         lh_mask = None
         rh_mask = None
-    lh_geo_reader = GiftiReader(geo_files.format('L'))
-    rh_geo_reader = GiftiReader(geo_files.format('R'))
+    if geo_files is None:
+        lh_faces = None
+        rh_faces = None
+    else:
+        raise NotImplementedError
+
+    lmaps = nib.load(maps_file.format('lh')).get_data()
+    rmaps = nib.load(maps_file.format('rh')).get_data()
     lFFA_vertices = nib.freesurfer.read_label(FFA_label_files.format('l'))
     rFFA_vertices = nib.freesurfer.read_label(FFA_label_files.format('r'))
-    lFFA_patterns = get_roi_pattern(reader.get_data('CIFTI_STRUCTURE_CORTEX_LEFT', True), lFFA_vertices,
-                                    zscore, thr, bin, size_min, lh_geo_reader.faces, lh_mask)
-    rFFA_patterns = get_roi_pattern(reader.get_data('CIFTI_STRUCTURE_CORTEX_RIGHT', True), rFFA_vertices,
-                                    zscore, thr, bin, size_min, rh_geo_reader.faces, rh_mask)
+    lFFA_patterns = get_roi_pattern(lmaps, lFFA_vertices, zscore, thr, bin, size_min, lh_faces, lh_mask)
+    rFFA_patterns = get_roi_pattern(rmaps, rFFA_vertices, zscore, thr, bin, size_min, rh_faces, rh_mask)
 
     save2nifti(pjoin(analysis_dir, 'lFFA_patterns.nii.gz'), lFFA_patterns)
     save2nifti(pjoin(analysis_dir, 'rFFA_patterns.nii.gz'), rFFA_patterns)
