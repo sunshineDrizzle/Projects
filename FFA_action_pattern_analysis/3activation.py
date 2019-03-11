@@ -9,7 +9,7 @@ if __name__ == '__main__':
     # predefine some variates
     # -----------------------
     # predefine parameters
-    cluster_nums = [1]
+    cluster_nums = [2]
     hemi = 'lh'
     brain_structure = {
         'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    analysis_dir = pjoin(project_dir, 'LiuLab_zscore')
+    analysis_dir = pjoin(project_dir, 's2_25_zscore')
     cluster_num_dirs = pjoin(analysis_dir, 'HAC_ward_euclidean/{}clusters')
     FFA_label_files = pjoin(project_dir, 'data/LiuLab_face-avg/label/{}FFA.label')
     maps_file = pjoin(project_dir, 'data/LiuLab_face-avg/LiuLab_495_FACE-AVG_zstat_fsaverage_{}.nii.gz')
