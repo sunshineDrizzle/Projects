@@ -29,11 +29,11 @@ def PA_plot(src_file, brain_structures, PAs, masks, group_labels, axes, color, i
             if zscore:
                 y = stats.zscore(y)
                 mask_value = stats.zscore(mask_value)
-                axes[row, col].errorbar(x, y, color=color, label=item)
+                axes[row, col].plot(x, y, color=color, label=item)
             else:
                 sem = stats.sem(subgroup_PA_maps, 0)
                 axes[row, col].errorbar(x, y, yerr=sem, color=color, label=item)
-            axes[row, col].set_title(label)
+            axes[row, col].set_title('group' + str(label))
             item_ys_dict[item][row, col] = y
             item_mask_values_dict[item][row, col] = mask_value
 
@@ -61,24 +61,24 @@ if __name__ == '__main__':
     cluster_num = 2
     items = [
         # 'pattern',
-        # 'face-avg',
-        # 'curvature',
-        # 'thickness',
-        # 'myelin',
-        'mean_bold_signal',
+        'activation',
+        'curvature',
+        'thickness',
+        'myelin',
+        # 'mean bold signal',
         # 'body',
         # 'face',
         # 'place',
         # 'tool',
     ]
-    zscore = False
+    zscore = True
     item2color = {
         'pattern': 'k',
-        'face-avg': 'y',
+        'activation': 'y',
         'curvature': 'r',
         'thickness': 'g',
         'myelin': 'b',
-        'mean_bold_signal': 'c',
+        'mean bold signal': 'c',
         'body': 'm',
         'face': 'pink',
         'place': 'purple',
@@ -101,8 +101,8 @@ if __name__ == '__main__':
         group_labels = np.array(rf.read().split(' '), dtype=np.uint16)
 
     fig, axes = plt.subplots(cluster_num, 2, sharex=True)
-    axes[-1, 0].set_xlabel('from posterior to anterior of lFFA')
-    axes[-1, 1].set_xlabel('from posterior to anterior of rFFA')
+    axes[-1, 0].set_xlabel('from posterior to anterior of lFFA mask')
+    axes[-1, 1].set_xlabel('from posterior to anterior of rFFA mask')
 
     PAs = [lh_PA, rh_PA]
     masks = [lh_mask, rh_mask]
@@ -113,8 +113,8 @@ if __name__ == '__main__':
         if item == 'pattern':
             item_ys_dict[item] = np.zeros_like(axes, dtype=object)
             item_mask_values_dict[item] = np.zeros_like(axes, dtype=object)
-            lh_src_file = pjoin(cluster_num_dir, 'activation/lh_pattern_mean_maps.nii.gz')
-            rh_src_file = pjoin(cluster_num_dir, 'activation/rh_pattern_mean_maps.nii.gz')
+            lh_src_file = pjoin(cluster_num_dir, 'activation/lh_pattern_mean_maps_FFA_masked.nii.gz')
+            rh_src_file = pjoin(cluster_num_dir, 'activation/rh_pattern_mean_maps_FFA_masked.nii.gz')
             src_files = [lh_src_file, rh_src_file]
             for col in range(2):
                 PA = PAs[col]
@@ -127,12 +127,12 @@ if __name__ == '__main__':
                     y = PA_maps[row]
                     mask_value = mask_maps[row]
                     axes[row, col].plot(x, y, color=item2color[item], label=item)
-                    axes[row, col].set_title(row+1)
+                    axes[row, col].set_title('group' + str(row+1))
                     item_ys_dict[item][row, col] = y
                     item_mask_values_dict[item][row, col] = mask_value
             continue
 
-        if item == 'face-avg':
+        if item == 'activation':
             src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'curvature':
             src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_curvature_MSMAll_32k_fs_LR.dscalar.nii')
@@ -140,7 +140,7 @@ if __name__ == '__main__':
             src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_thickness_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'myelin':
             src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_MyelinMap_BC_MSMAll_32k_fs_LR.dscalar.nii')
-        elif item == 'mean_bold_signal':
+        elif item == 'mean bold signal':
             src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_Mean_BOLD_Signal_MSMAll_32k_fs_LR.dscalar.nii')
         elif item == 'body':
             src_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope14_BODY_s2_MSMAll_32k_fs_LR.dscalar.nii')
@@ -159,12 +159,12 @@ if __name__ == '__main__':
         for col in range(axes.shape[1]):
             axes[row, col].legend()
 
-    # inter_subgroup_corr(item_mask_values_dict, 'face-avg')
+    # inter_subgroup_corr(item_mask_values_dict, 'activation')
     # inter_subgroup_corr(item_mask_values_dict, 'curvature')
     # inter_subgroup_corr(item_mask_values_dict, 'thickness')
     # inter_subgroup_corr(item_mask_values_dict, 'myelin')
-    # inter_item_corr(item_ys_dict, 'face-avg', 'mean_bold_signal')
-    # inter_subgroup_corr(item_ys_dict, 'mean_bold_signal')
+    # inter_item_corr(item_mask_values_dict, 'activation', 'myelin')
+    # inter_subgroup_corr(item_mask_values_dict, 'mean bold signal')
     # inter_subgroup_corr(item_ys_dict, 'face-avg')
 
     plt.tight_layout()

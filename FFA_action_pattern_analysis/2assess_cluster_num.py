@@ -151,11 +151,11 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    analysis_dir = pjoin(project_dir, 'LiuLab_zscore')
+    analysis_dir = pjoin(project_dir, 's2_25_zscore')
     clustering_dir = pjoin(analysis_dir, clustering_method)
     clustering_result_dir = pjoin(clustering_dir, 'clustering_results')
-    FFA_label_files = pjoin(project_dir, 'data/LiuLab_face-avg/label/{}FFA.label')
-    maps_file = pjoin(project_dir, 'data/LiuLab_face-avg/LiuLab_495_FACE-AVG_zstat_fsaverage_{}.nii.gz')
+    FFA_label_files = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label')
+    maps_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     FFA_pattern_files = pjoin(analysis_dir, '{}FFA_patterns.nii.gz')
     # -----------------------
     print('Finish: predefine some variates')
@@ -163,22 +163,22 @@ if __name__ == '__main__':
     print('Start: prepare data')
     # -----------------------
     # prepare FFA patterns
-    # reader = CiftiReader(maps_file)
+    reader = CiftiReader(maps_file)
     if hemi == 'both':
         lFFA_vertices = nib.freesurfer.read_label(FFA_label_files.format('l'))
         rFFA_vertices = nib.freesurfer.read_label(FFA_label_files.format('r'))
-        # lFFA_maps = reader.get_data(brain_structure['lh'], True)[:, lFFA_vertices]
-        # rFFA_maps = reader.get_data(brain_structure['rh'], True)[:, rFFA_vertices]
-        lFFA_maps = nib.load(maps_file.format('lh')).get_data()[:, lFFA_vertices]
-        rFFA_maps = nib.load(maps_file.format('rh')).get_data()[:, rFFA_vertices]
+        lFFA_maps = reader.get_data(brain_structure['lh'], True)[:, lFFA_vertices]
+        rFFA_maps = reader.get_data(brain_structure['rh'], True)[:, rFFA_vertices]
+        # lFFA_maps = nib.load(maps_file.format('lh')).get_data()[:, lFFA_vertices]
+        # rFFA_maps = nib.load(maps_file.format('rh')).get_data()[:, rFFA_vertices]
         FFA_maps = np.c_[lFFA_maps, rFFA_maps]
         lFFA_patterns = nib.load(FFA_pattern_files.format('l')).get_data()
         rFFA_patterns = nib.load(FFA_pattern_files.format('r')).get_data()
         FFA_patterns = np.c_[lFFA_patterns, rFFA_patterns]
     else:
         FFA_vertices = nib.freesurfer.read_label(FFA_label_files.format(hemi[0]))
-        # FFA_maps = reader.get_data(brain_structure[hemi], True)[:, FFA_vertices]
-        FFA_maps = nib.load(maps_file.format(hemi)).get_data()[:, FFA_vertices]
+        FFA_maps = reader.get_data(brain_structure[hemi], True)[:, FFA_vertices]
+        # FFA_maps = nib.load(maps_file.format(hemi)).get_data()[:, FFA_vertices]
         FFA_patterns = nib.load(FFA_pattern_files.format(hemi[0])).get_data()
     # -----------------------
     print('Finish: prepare data')
@@ -285,7 +285,7 @@ if __name__ == '__main__':
 
         elif 'elbow' in metric_pair[0]:
             y = assessments_dict[metric_pair[0]]
-            v_plotter.axes[0].plot(x, y, 'b.-')
+            v_plotter.axes[0].plot(x, y, 'k.-')
 
             x1 = x[:-1]
             y1 = [y[i] - y[i + 1] for i in x1]
@@ -305,10 +305,12 @@ if __name__ == '__main__':
             x2 = x1[:-1]
             y2 = [y1[i] - y1[i + 1] for i in x2]
             fig2, ax2 = plt.subplots()
-            ax2.plot(x2, y2, 'b.-')
-            ax2.set_title('assessment for #subgroups')
-            ax2.set_xlabel('#subgroups')
-            ax2.set_ylabel(metric_pair[0] + "''")
+            ax2.plot(x2, y2, 'k.-')
+            # ax2.set_title('assessment for #subgroups')
+            # ax2.set_xlabel('#subgroups')
+            # ax2.set_ylabel(metric_pair[0] + "''")
+            ax2.set_xlabel('k')
+            ax2.set_ylabel('-\u25b3V\u2096')
             if len(x2) > 20:
                 middle_idx = int(len(x2) / 2)
                 ax2.set_xticks(x2[[0, middle_idx, -1]])
@@ -330,8 +332,9 @@ if __name__ == '__main__':
         else:
             v_plotter.axes[0].plot(x, assessments_dict[metric_pair[0]], 'b.-')
 
-        v_plotter.axes[0].set_title('assessment for #subgroups')
-        v_plotter.axes[0].set_xlabel('#subgroups')
+        # v_plotter.axes[0].set_title('assessment for #subgroups')
+        # v_plotter.axes[0].set_xlabel('#subgroups')
+        v_plotter.axes[0].set_xlabel('k')
         if n_labels > 2:
             if metric_pair[0] == 'gap statistic':
                 vline_idx = np.where(x_labels == assessments_dict[metric_pair[0]][2])[0][0]
@@ -339,7 +342,7 @@ if __name__ == '__main__':
                 vline_idx = int(n_labels / 2)
             v_plotter.axes[0].set_xticks(x[[0, vline_idx, -1]])
             v_plotter.axes[0].set_xticklabels(x_labels[[0, vline_idx, -1]])
-            plt.setp(v_plotter.axes[0].get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
+            # plt.setp(v_plotter.axes[0].get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
         else:
             if metric_pair[0] == 'gap statistic':
                 vline_idx = np.where(x_labels == assessments_dict[metric_pair[0]][2])[0][0]
@@ -347,8 +350,9 @@ if __name__ == '__main__':
                 vline_idx = 0
             v_plotter.axes[0].set_xticks(x)
             v_plotter.axes[0].set_xticklabels(x_labels)
-        v_plotter.axes[0].set_ylabel(metric_pair[0], color='b')
-        v_plotter.axes[0].tick_params('y', colors='b')
+        # v_plotter.axes[0].set_ylabel(metric_pair[0], color='b')
+        # v_plotter.axes[0].tick_params('y', colors='b')
+        v_plotter.axes[0].set_ylabel('W\u2096')
 
         if len(metric_pair) == 2:
             # plot another assessment curve in a twin axis
@@ -372,7 +376,7 @@ if __name__ == '__main__':
             v_plotter.axes_twin[0].set_ylabel(metric_pair[1], color='r')
             v_plotter.axes_twin[0].tick_params('y', colors='r')
 
-        v_plotter.add_vline_mover(vline_idx=vline_idx, x_round=True)
+        # v_plotter.add_vline_mover(vline_idx=vline_idx, x_round=True)
         v_plotter.figure.tight_layout()
         vline_plotter_holder.append(v_plotter)
     # -----------------------

@@ -97,7 +97,7 @@ if __name__ == '__main__':
     with open(subjects_id_file) as rf:
         subjects_1080 = np.array(rf.read().splitlines())
 
-    with open(pjoin(project_dir, 'data/HCP/S1200_behavior.csv')) as f:
+    with open(pjoin(project_dir, 'data/HCP/RESTRICTED_liqinqin_5_22_2017_22_29_56.csv')) as f:
         lines = f.read().splitlines()
     behavior_names = lines[0].split(',')[1:]
     subject_dict = {}
@@ -112,12 +112,13 @@ if __name__ == '__main__':
         # 'WM_Task_0bk_Acc',
         # 'WM_Task_2bk_Acc',
         # 'WM_Task_0bk_Face_Acc',
-        'WM_Task_2bk_Face_Acc',
+        # 'WM_Task_2bk_Face_Acc',
         # 'WM_Task_Median_RT',
         # 'WM_Task_0bk_Median_RT',
         # 'WM_Task_2bk_Median_RT',
         # 'WM_Task_0bk_Face_Median_RT',
-        'WM_Task_2bk_Face_Median_RT'
+        # 'WM_Task_2bk_Face_Median_RT',
+        'Age_in_Yrs'
     ]
     float_data_dict = {}
     for item in float_items:
@@ -165,7 +166,8 @@ if __name__ == '__main__':
         elif 'RT' in item:
             float_data_list = [float_data/1000.0 for float_data in float_data_dict[item]]
         else:
-            raise RuntimeError('{} is not supported!'.format(item))
+            float_data_list = float_data_dict[item]
+            # raise RuntimeError('{} is not supported!'.format(item))
         y = [np.mean(float_data) for float_data in float_data_list]
         sems = [sem(float_data) for float_data in float_data_list]
         rects = ax.bar(x, y, width, color='b', yerr=sems, ecolor='blue', alpha=0.5)
@@ -181,6 +183,8 @@ if __name__ == '__main__':
         elif 'RT' in item:
             show_bar_value(rects, '.2f')
             ax.set_ylabel('reaction time (sec)')
+        elif 'Age' in item:
+            ax.set_ylabel('age (year)')
         else:
             raise RuntimeError('{} is not supported!'.format(item))
 
@@ -231,28 +235,28 @@ if __name__ == '__main__':
     ax.set_ylabel('percent')
     # plt.savefig(pjoin(cluster_num_dir, 'Gender_percent.png'))
 
-    acc_item = 'WM_Task_2bk_Face_Acc'
-    rt_item = 'WM_Task_2bk_Face_Median_RT'
-    title = '{}/{}'.format(acc_item, rt_item)
-    x = np.arange(label_num)
-    width = auto_bar_width(x)
-    plt.figure()
-    ax = plt.gca()
-    acc_data_list = [float_data / 100.0 for float_data in float_data_dict[acc_item]]
-    rt_data_list = [float_data / 1000.0 for float_data in float_data_dict[rt_item]]
-    float_data_list = [acc / rt for acc, rt in zip(acc_data_list, rt_data_list)]
-    y = [np.mean(float_data) for float_data in float_data_list]
-    sems = [sem(float_data) for float_data in float_data_list]
-    rects = ax.bar(x, y, width, color='b', yerr=sems, ecolor='blue', alpha=0.5)
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.set_title(title)
-    ax.set_xlabel('subgroup label')
-    for i in range(label_num):
-        for j in range(i + 1, label_num):
-            print('subgroup{} vs. subgroup{} with {}:'.format(labels[i], labels[j], title),
-                  ttest_ind(float_data_list[i], float_data_list[j]))
+    # acc_item = 'WM_Task_2bk_Face_Acc'
+    # rt_item = 'WM_Task_2bk_Face_Median_RT'
+    # title = '{}/{}'.format(acc_item, rt_item)
+    # x = np.arange(label_num)
+    # width = auto_bar_width(x)
+    # plt.figure()
+    # ax = plt.gca()
+    # acc_data_list = [float_data / 100.0 for float_data in float_data_dict[acc_item]]
+    # rt_data_list = [float_data / 1000.0 for float_data in float_data_dict[rt_item]]
+    # float_data_list = [acc / rt for acc, rt in zip(acc_data_list, rt_data_list)]
+    # y = [np.mean(float_data) for float_data in float_data_list]
+    # sems = [sem(float_data) for float_data in float_data_list]
+    # rects = ax.bar(x, y, width, color='b', yerr=sems, ecolor='blue', alpha=0.5)
+    # ax.set_xticks(x)
+    # ax.set_xticklabels(labels)
+    # ax.spines['top'].set_visible(False)
+    # ax.spines['right'].set_visible(False)
+    # ax.set_title(title)
+    # ax.set_xlabel('subgroup label')
+    # for i in range(label_num):
+    #     for j in range(i + 1, label_num):
+    #         print('subgroup{} vs. subgroup{} with {}:'.format(labels[i], labels[j], title),
+    #               ttest_ind(float_data_list[i], float_data_list[j]))
 
     plt.show()

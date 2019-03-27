@@ -14,7 +14,7 @@ if __name__ == '__main__':
     }
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    patterns1_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_Mean_BOLD_Signal_MSMAll_32k_fs_LR.dscalar.nii')
+    patterns1_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_MyelinMap_BC_MSMAll_32k_fs_LR.dscalar.nii')
     patterns2_file = pjoin(project_dir, 'data/HCP_1080/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
     mask_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label'.format(hemi[0]))
     corr_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/pattern_corr')
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     print(pearsonr(patterns2_g2_mean, patterns1_g1_mean))
     print(pearsonr(patterns2_g2_mean, patterns1_g2_mean))
 
-    corr_file = pjoin(corr_dir, 'g{}_acti_corr_g{}_MBS_{}FFA.npy'.format(label_pair[1], label_pair[0], hemi[0]))
-    corr_arr = np.array([pearsonr(x, y) for x in patterns2_g2 for y in patterns1_g1])
-    np.save(corr_file, corr_arr)
+    # corr_file = pjoin(corr_dir, 'g{}_acti_corr_g{}_curv_{}FFA.npy'.format(label_pair[1], label_pair[1], hemi[0]))
+    # corr_arr = np.array([pearsonr(x, y) for x in patterns2_g2 for y in patterns1_g2])
+    # np.save(corr_file, corr_arr)
     # ---intersubgroup---

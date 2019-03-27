@@ -29,7 +29,7 @@ if __name__ == '__main__':
     npy_info_file = pjoin(connect_dir, 'npy_info')
 
     multi_test_corrected = True
-    alpha = 1.1
+    alpha = 0.05
     connectivity_data = np.load(connectivity_file)
     FFA_rois = ['l1_FFA', 'l2_FFA', 'r1_FFA', 'r2_FFA']
     subFFA_rois = ['l1_FFA1', 'l1_FFA2', 'l2_FFA1', 'r1_FFA1', 'r1_FFA2', 'r2_FFA1']
@@ -40,10 +40,10 @@ if __name__ == '__main__':
         'r1_FFA1': 'R_FFA1', 'r1_FFA2': 'R_FFA2', 'r2_FFA1': 'R_FFA1'
     }
     item2exclude = {
-        'l1_FFA_g1': [r for r in FFA_rois if r != 'r1_FFA'] + subFFA_rois,
-        'l2_FFA_g2': [r for r in FFA_rois if r != 'r2_FFA'] + subFFA_rois,
-        'r1_FFA_g1': [r for r in FFA_rois if r != 'l1_FFA'] + subFFA_rois,
-        'r2_FFA_g2': [r for r in FFA_rois if r != 'l2_FFA'] + subFFA_rois,
+        'l1_FFA': [r for r in FFA_rois if r != 'r1_FFA'] + subFFA_rois,
+        'l2_FFA': [r for r in FFA_rois if r != 'r2_FFA'] + subFFA_rois,
+        'r1_FFA': [r for r in FFA_rois if r != 'l1_FFA'] + subFFA_rois,
+        'r2_FFA': [r for r in FFA_rois if r != 'l2_FFA'] + subFFA_rois,
         'L_OFA_g1': ['L_OFA', 'l2_FFA', 'r2_FFA'] + subFFA_rois,
         'L_OFA_g2': ['L_OFA', 'l1_FFA', 'r1_FFA'] + subFFA_rois,
         'R_OFA_g1': ['R_OFA', 'l2_FFA', 'r2_FFA'] + subFFA_rois,
@@ -56,23 +56,28 @@ if __name__ == '__main__':
     mean_sem_dir = pjoin(connect_dir, 'mean_sem')
     if not os.path.exists(mean_sem_dir):
         os.makedirs(mean_sem_dir)
-    items = ['L_OFA_g1', 'L_OFA_g2', 'R_OFA_g1', 'R_OFA_g2']
-    for item in items:
-        seed_roi = item[:-3]
-        sub_connectivity_data = connectivity_data[group_labels == item[-1]]
-        samples, sample_names = get_samples(sub_connectivity_data,
-                                            seed_roi, all_rois, item2exclude[item])
-        for idx, sample_name in enumerate(sample_names):
-            if sample_name in FFA2name.keys():
-                sample_names[idx] = FFA2name[sample_name]
-        output_file = pjoin(mean_sem_dir, item)
-        calc_mean_sem(samples, output_file, sample_names)
+    # items = ['L_OFA_g1', 'L_OFA_g2', 'R_OFA_g1', 'R_OFA_g2']
+    # items = FFA_rois
+    # for item in items:
+    #     seed_roi = item
+    #     sub_connectivity_data = connectivity_data[group_labels == item[1]]
+    #     samples, sample_names = get_samples(sub_connectivity_data,
+    #                                         seed_roi, all_rois, item2exclude[item])
+    #     for idx, sample_name in enumerate(sample_names):
+    #         if sample_name in FFA2name.keys():
+    #             sample_names[idx] = FFA2name[sample_name]
+    #     output_file = pjoin(mean_sem_dir, item)
+    #     calc_mean_sem(samples, output_file, sample_names)
     # ---calculate mean sem end---
 
     # ---plot mean sem start---
+    # items_list = [
+    #     ['L_OFA_g1', 'L_OFA_g2'],
+    #     ['R_OFA_g1', 'R_OFA_g2']
+    # ]
     items_list = [
-        ['L_OFA_g1', 'L_OFA_g2'],
-        ['R_OFA_g1', 'R_OFA_g2']
+        ['l1_FFA', 'l2_FFA'],
+        ['r1_FFA', 'r2_FFA']
     ]
     for items in items_list:
         mean_sem_files = [pjoin(mean_sem_dir, item) for item in items]
@@ -83,22 +88,26 @@ if __name__ == '__main__':
     compare_dir = pjoin(connect_dir, 'compare')
     if not os.path.exists(compare_dir):
         os.makedirs(compare_dir)
+    # item_pairs = [
+    #     ['L_OFA_g1', 'L_OFA_g2'],
+    #     ['R_OFA_g1', 'R_OFA_g2']
+    # ]
     item_pairs = [
-        ['L_OFA_g1', 'L_OFA_g2'],
-        ['R_OFA_g1', 'R_OFA_g2']
+        ['l1_FFA', 'l2_FFA'],
+        ['r1_FFA', 'r2_FFA']
     ]
-    for item1, item2 in item_pairs:
-        seed_roi1 = item1[:-3]
-        seed_roi2 = item2[:-3]
-        samples1, sample_names1 = get_samples(connectivity_data[group_labels == item1[-1]],
-                                              seed_roi1, all_rois, item2exclude[item1])
-        for idx, sample_name1 in enumerate(sample_names1):
-            if sample_name1 in FFA2name.keys():
-                sample_names1[idx] = FFA2name[sample_name1]
-        samples2, sample_names2 = get_samples(connectivity_data[group_labels == item2[-1]],
-                                              seed_roi2, all_rois, item2exclude[item2])
-        output_file = pjoin(compare_dir, '{}_vs_{}'.format(item1, item2))
-        ttest_ind_pairwise(samples1, samples2, output_file, sample_names1)
+    # for item1, item2 in item_pairs:
+    #     seed_roi1 = item1
+    #     seed_roi2 = item2
+    #     samples1, sample_names1 = get_samples(connectivity_data[group_labels == item1[1]],
+    #                                           seed_roi1, all_rois, item2exclude[item1])
+    #     for idx, sample_name1 in enumerate(sample_names1):
+    #         if sample_name1 in FFA2name.keys():
+    #             sample_names1[idx] = FFA2name[sample_name1]
+    #     samples2, sample_names2 = get_samples(connectivity_data[group_labels == item2[1]],
+    #                                           seed_roi2, all_rois, item2exclude[item2])
+    #     output_file = pjoin(compare_dir, '{}_vs_{}'.format(item1, item2))
+    #     ttest_ind_pairwise(samples1, samples2, output_file, sample_names1)
 
     for item1, item2, in item_pairs:
         file_name = '{}_vs_{}'.format(item1, item2)

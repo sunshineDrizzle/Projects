@@ -6,6 +6,7 @@ if __name__ == '__main__':
     import nibabel as nib
 
     from os.path import join as pjoin
+    from scipy.stats import pearsonr
     from commontool.io.io import CiftiReader, CsvReader
 
     hemis = ('lh', 'rh')
@@ -43,13 +44,14 @@ if __name__ == '__main__':
     trg_regions_lr['rh'] = [np.where(FSR_nonFFA_r == i)[0] for i in np.unique(FSR_nonFFA_r) if i != 0]
     label_names_lr['rh'] = CsvReader(FSR_nonFFA_config_r).to_dict()['label_name']
     trg_regions_lr['lh'].append(nib.freesurfer.read_label(FFA_file_l))
-    label_names_lr['lh'].append('lFFA')
+    label_names_lr['lh'].append('lFFA mask')
     trg_regions_lr['rh'].append(nib.freesurfer.read_label(FFA_file_r))
-    label_names_lr['rh'].append('rFFA')
+    label_names_lr['rh'].append('rFFA mask')
     for group_label in group_labels_uniq:
         for hemi in hemis:
             subFFA_file = subFFA_files.format(hemi[0], group_label)
-            subFFA_name = subFFA_file.split('.')[0]
+            subFFA_file_name = os.path.basename(subFFA_file)
+            subFFA_name = subFFA_file_name.split('.')[0]
             subFFA_data = nib.load(subFFA_file).get_data().ravel()
             trg_regions_lr[hemi].append(np.where(subFFA_data != 0)[0])
             label_names_lr[hemi].append(subFFA_name)
@@ -61,17 +63,48 @@ if __name__ == '__main__':
 
     reader = CiftiReader(acti_maps_file)
 
-    # ---activation magnitude start---
+    # label_names = label_names_lr[hemis[0]] + label_names_lr[hemis[1]]
+    # open(pjoin(acti_analysis_dir, 'npy_column_name'), 'w+').write(','.join(label_names))
+    # ---activation intensity start---
+    # for group_label in group_labels_uniq:
+    #     indices = np.where(group_labels == group_label)[0]
+    #     roi_means_arr = np.zeros((len(indices), 0))
+    #     for hemi in hemis:
+    #         acti_maps = reader.get_data(brain_structure[hemi], True)
+    #         sub_acti_maps = acti_maps[indices]
+    #         for region in trg_regions_lr[hemi]:
+    #             roi_mean = np.atleast_2d(np.nanmean(sub_acti_maps[:, region], 1)).T
+    #             roi_means_arr = np.c_[roi_means_arr, roi_mean]
+    #     np.save(pjoin(acti_analysis_dir, 'g{}_intensity.npy'.format(group_label)), roi_means_arr)
+    # ---activation intensity end---
+
+    # ---intra subgroup activation pattern similarity start---
     for group_label in group_labels_uniq:
-        indices = np.where(group_labels == group_label)[0]
-        roi_means_arr = np.zeros((len(indices), 0))
+        pattern_similarities_list = []
         for hemi in hemis:
             acti_maps = reader.get_data(brain_structure[hemi], True)
-            sub_acti_maps = acti_maps[indices]
+            sub_acti_maps = acti_maps[group_labels == group_label]
+            subj_num = sub_acti_maps.shape[0]
             for region in trg_regions_lr[hemi]:
-                roi_mean = np.atleast_2d(np.nanmean(sub_acti_maps[:, region], 1)).T
-                roi_means_arr = np.c_[roi_means_arr, roi_mean]
-        np.save(pjoin(acti_analysis_dir, 'subgroup{}_magnitude.npy'.format(group_label)), roi_means_arr)
-    # ---activation magnitude end---
+                sub_acti_maps_masked = sub_acti_maps[:, region]
+                pattern_similarities = [pearsonr(sub_acti_maps_masked[i], sub_acti_maps_masked[j])[0] for i in range(subj_num-1) for j in range(i+1, subj_num)]
+                pattern_similarities_list.append(pattern_similarities)
+        out_file = pjoin(acti_analysis_dir, 'g{}_intra_pattern_similarity.npy'.format(group_label))
+        np.save(out_file, np.array(pattern_similarities_list).T)
+    # ---intra subgroup activation pattern similarity end---
 
-
+    # ---inter subgroup activation pattern similarity start---
+    group_label_pair = (1, 2)
+    pattern_similarities_list = []
+    for hemi in hemis:
+        acti_maps = reader.get_data(brain_structure[hemi], True)
+        sub_acti_maps1 = acti_maps[group_labels == group_label_pair[0]]
+        sub_acti_maps2 = acti_maps[group_labels == group_label_pair[1]]
+        for region in trg_regions_lr[hemi]:
+            sub_acti_maps1_masked = sub_acti_maps1[:, region]
+            sub_acti_maps2_masked = sub_acti_maps2[:, region]
+            pattern_similarities = [pearsonr(x, y)[0] for x in sub_acti_maps1_masked for y in sub_acti_maps2_masked]
+            pattern_similarities_list.append(pattern_similarities)
+    out_file = pjoin(acti_analysis_dir, 'g{}_and_g{}_inter_pattern_similarity.npy'.format(group_label_pair[0], group_label_pair[1]))
+    np.save(out_file, np.array(pattern_similarities_list).T)
+    # ---inter subgroup activation pattern similarity end---
