@@ -4,7 +4,7 @@ if __name__ == '__main__':
     import nibabel as nib
 
     from os.path import join as pjoin
-    from scipy.stats.stats import pearsonr
+    from scipy.stats.stats import pearsonr, zscore
     from commontool.io.io import GiftiReader
 
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     lh_g2_mean_map_file = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation/lh_g2_mean_map_fsaverage.func.gii')
     rh_g1_mean_map_file = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation/rh_g1_mean_map_fsaverage.func.gii')
     rh_g2_mean_map_file = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation/rh_g2_mean_map_fsaverage.func.gii')
-    regroup_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/regroup/LiuLab_face-avg')
+    regroup_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/regroup/LiuLab_face-avg_zscore')
     if not os.path.exists(regroup_dir):
         os.makedirs(regroup_dir)
 
@@ -29,9 +29,15 @@ if __name__ == '__main__':
     rh_g1_mean_map = GiftiReader(rh_g1_mean_map_file).scalar_data
     rh_g2_mean_map = GiftiReader(rh_g2_mean_map_file).scalar_data
 
-    FFA_maps = np.c_[lh_maps[:, lFFA_vertices], rh_maps[:, rFFA_vertices]]
-    g1_FFA_mean_map = np.r_[lh_g1_mean_map[lFFA_vertices], rh_g1_mean_map[rFFA_vertices]]
-    g2_FFA_mean_map = np.r_[lh_g2_mean_map[lFFA_vertices], rh_g2_mean_map[rFFA_vertices]]
+    lFFA_maps = zscore(lh_maps[:, lFFA_vertices], 1)
+    rFFA_maps = zscore(rh_maps[:, rFFA_vertices], 1)
+    FFA_maps = np.c_[lFFA_maps, rFFA_maps]
+    l1_FFA_mean_map = zscore(lh_g1_mean_map[lFFA_vertices])
+    r1_FFA_mean_map = zscore(rh_g1_mean_map[rFFA_vertices])
+    g1_FFA_mean_map = np.r_[l1_FFA_mean_map, r1_FFA_mean_map]
+    l2_FFA_mean_map = zscore(lh_g2_mean_map[lFFA_vertices])
+    r2_FFA_mean_map = zscore(rh_g2_mean_map[rFFA_vertices])
+    g2_FFA_mean_map = np.r_[l2_FFA_mean_map, r2_FFA_mean_map]
 
     regroup_labels = []
     for FFA_map in FFA_maps:
