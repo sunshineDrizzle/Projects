@@ -12,36 +12,6 @@ def hac_sklearn(data, n_clusters):
     return clustering.labels_
 
 
-def hac_scipy(data, cluster_nums, method='ward', metric='euclidean', output=None):
-    """
-
-    :param data:
-    :param cluster_nums: sequence | iterator
-        Each element is the number of clusters that HAC generate.
-    :param method:
-    :param metric:
-    :param output:
-
-    :return: labels_list: list
-        label results of each cluster_num
-    """
-    from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
-
-    # do hierarchical clustering on FFA_data and show the dendrogram by using scipy
-    Z = linkage(data, method, metric)
-    labels_list = []
-    for num in cluster_nums:
-        labels_list.append(fcluster(Z, num, 'maxclust'))
-        print('HAC finished: {}'.format(num))
-
-    if output is not None:
-        plt.figure()
-        dendrogram(Z)
-        plt.savefig(output)
-
-    return labels_list
-
-
 def verify_same_effect_between_two_tools(data):
     labels_sklearn = hac_sklearn(data, 2)
     labels_scipy = hac_scipy(data, 2, 'ward')
@@ -127,6 +97,7 @@ if __name__ == '__main__':
 
     from os.path import join as pjoin
     from commontool.algorithm.plot import imshow
+    from commontool.algorithm.cluster import hac_scipy
 
     print('Start: predefine some variates')
     # -----------------------
@@ -138,11 +109,11 @@ if __name__ == '__main__':
 
     # predefine paths
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
-    analysis_dir = pjoin(project_dir, 'LiuLab_zscore')
+    analysis_dir = pjoin(project_dir, 's2_25_zscore')
     clustering_result_dir = pjoin(analysis_dir, '{}/clustering_results'.format(clustering_method))
     if not os.path.exists(clustering_result_dir):
         os.makedirs(clustering_result_dir)
-    FFA_label_files = pjoin(project_dir, 'data/LiuLab_face-avg/label/{}FFA.label')
+    FFA_label_files = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA.label')
     FFA_pattern_files = pjoin(analysis_dir, '{}FFA_patterns.nii.gz')
     # -----------------------
     print('Finish: predefine some variates')
@@ -183,7 +154,7 @@ if __name__ == '__main__':
     elif 'HAC' in clustering_method:
         values = clustering_method.split('_')
         labels_list = hac_scipy(FFA_patterns, range(1, 51), method=values[1], metric=values[2],
-                                output=pjoin(clustering_result_dir, 'hac_dendrogram.png'))
+                                out_path=pjoin(clustering_result_dir, 'hac_dendrogram.png'))
     elif clustering_method == 'KM':
         labels_list = k_means(FFA_patterns, range(1, 51), 10)
     else:

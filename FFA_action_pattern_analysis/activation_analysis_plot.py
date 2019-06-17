@@ -10,22 +10,25 @@ from commontool.algorithm.statistics import calc_mean_sem, ttest_ind_pairwise, p
 project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
 acti_analysis_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/activation/acti_of_FSR')
 
-# column_name_file = pjoin(acti_analysis_dir, 'npy_column_name')
-# column_names = open(column_name_file).read().split(',')
+column_name_file = pjoin(acti_analysis_dir, 'npy_column_name')
+column_names = open(column_name_file).read().split(',')
 # data1_1 = np.load(pjoin(acti_analysis_dir, 'g1_intra_pattern_similarity.npy'))
 # data1_2 = np.load(pjoin(acti_analysis_dir, 'g2_intra_pattern_similarity.npy'))
 # data1 = np.r_[data1_1, data1_2]
 # data2 = np.load(pjoin(acti_analysis_dir, 'g1_and_g2_inter_pattern_similarity.npy'))
 # samples1 = []
 # samples2 = []
-# sample_names = []
-# for idx, sample_name in enumerate(column_names):
-#     if 'FFA' in sample_name and 'mask' not in sample_name:
-#         continue
-#     else:
-#         samples1.append(data1[:, idx])
-#         samples2.append(data2[:, idx])
-#         sample_names.append(sample_name)
+sample_names = []
+for idx, sample_name in enumerate(column_names):
+    if 'FFA' in sample_name and 'mask' not in sample_name:
+        continue
+    else:
+        # samples1.append(data1[:, idx])
+        # samples2.append(data2[:, idx])
+        sample_names.append(sample_name)
+sample_names.remove('lFFA mask')
+sample_names.remove('rFFA mask')
+print(len(sample_names))
 
 # ---mean sem---
 # mean_sem_dir = pjoin(acti_analysis_dir, 'mean_sem')
@@ -45,16 +48,18 @@ if not os.path.exists(compare_dir):
 compare_file = pjoin(compare_dir, 'intra_vs_inter_pattern_similarity')
 # ttest_ind_pairwise(samples1, samples2, compare_file, sample_names.copy())
 
-multi_test_corrected = False
+multi_test_corrected = True
 alpha = 1.1
 compare_dict = CsvReader(compare_file).to_dict(1)
-ps = np.array(list(map(float, compare_dict['p'])))
+ps = [float(compare_dict['p'][idx]) for idx, name in enumerate(compare_dict['sample_name']) if name in sample_names]
+ps = np.array(ps)
+sample_names_new = [name for name in compare_dict['sample_name'] if name in sample_names]
 if multi_test_corrected:
     reject, ps, alpha_sidak, alpha_bonf = multipletests(ps, 0.05, 'fdr_bh')
-sample_names = [name for idx, name in enumerate(compare_dict['sample_name']) if ps[idx] < alpha]
+sample_names_new = [name for idx, name in enumerate(sample_names_new) if ps[idx] < alpha]
 ps = [p for p in ps if p < alpha]
-print('\n'.join(list(map(str, zip(sample_names, ps)))))
-plot_compare(ps, sample_names, title=os.path.basename(compare_file))
+print('\n'.join(list(map(str, zip(sample_names_new, ps)))))
+plot_compare(ps, sample_names_new, title=os.path.basename(compare_file))
 # ---compare---
 
 plt.show()
