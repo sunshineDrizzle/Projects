@@ -20,18 +20,18 @@ FFA2name2 = {
     'r1_FFA1': 'G2_R_FG2', 'r1_FFA2': 'G2_R_FG4', 'r2_FFA1': 'G1_R_FG2', 'r2_FFA2': 'G1_R_FG4'
 }
 item2exclude = {
-    'l1_FFA': [r for r in FFA_rois if r != 'r1_FFA'],
-    'l2_FFA': [r for r in FFA_rois if r != 'r2_FFA'],
-    'r1_FFA': [r for r in FFA_rois if r != 'l1_FFA'],
-    'r2_FFA': [r for r in FFA_rois if r != 'l2_FFA'],
-    'l1_FFA1': [r for r in subFFA_rois if r[1] == '2'].append('l1_FFA1'),
-    'l1_FFA2': [r for r in subFFA_rois if r[1] == '2'].append('l1_FFA2'),
-    'r1_FFA1': [r for r in subFFA_rois if r[1] == '2'].append('r1_FFA1'),
-    'r1_FFA2': [r for r in subFFA_rois if r[1] == '2'].append('r1_FFA2'),
-    'l2_FFA1': [r for r in subFFA_rois if r[1] == '1'].append('l2_FFA1'),
-    'l2_FFA2': [r for r in subFFA_rois if r[1] == '1'].append('l2_FFA2'),
-    'r2_FFA1': [r for r in subFFA_rois if r[1] == '1'].append('r2_FFA1'),
-    'r2_FFA2': [r for r in subFFA_rois if r[1] == '1'].append('r2_FFA2'),
+    'l1_FFA': [r for r in FFA_rois if r != 'r1_FFA'] + subFFA_rois,
+    'l2_FFA': [r for r in FFA_rois if r != 'r2_FFA'] + subFFA_rois,
+    'r1_FFA': [r for r in FFA_rois if r != 'l1_FFA'] + subFFA_rois,
+    'r2_FFA': [r for r in FFA_rois if r != 'l2_FFA'] + subFFA_rois,
+    'l1_FFA1': [r for r in subFFA_rois if r[1] == '2'] + ['l1_FFA1'] + FFA_rois,
+    'l1_FFA2': [r for r in subFFA_rois if r[1] == '2'] + ['l1_FFA2'] + FFA_rois,
+    'r1_FFA1': [r for r in subFFA_rois if r[1] == '2'] + ['r1_FFA1'] + FFA_rois,
+    'r1_FFA2': [r for r in subFFA_rois if r[1] == '2'] + ['r1_FFA2'] + FFA_rois,
+    'l2_FFA1': [r for r in subFFA_rois if r[1] == '1'] + ['l2_FFA1'] + FFA_rois,
+    'l2_FFA2': [r for r in subFFA_rois if r[1] == '1'] + ['l2_FFA2'] + FFA_rois,
+    'r2_FFA1': [r for r in subFFA_rois if r[1] == '1'] + ['r2_FFA1'] + FFA_rois,
+    'r2_FFA2': [r for r in subFFA_rois if r[1] == '1'] + ['r2_FFA2'] + FFA_rois,
     'L_OFA_g1': ['L_OFA', 'l2_FFA', 'r2_FFA'] + [r for r in subFFA_rois if r[1] == '2'],
     'L_OFA_g2': ['L_OFA', 'l1_FFA', 'r1_FFA'] + [r for r in subFFA_rois if r[1] == '1'],
     'R_OFA_g1': ['R_OFA', 'l2_FFA', 'r2_FFA'] + [r for r in subFFA_rois if r[1] == '2'],
@@ -58,25 +58,25 @@ def mean_sem_calc():
     from commontool.io.io import CsvReader
     from commontool.algorithm.statistics import calc_mean_sem
 
-    connectivity_file = pjoin(connect_dir, 'connectivity.npy')
+    connectivity_file = pjoin(connect_dir, 'connectivity_sess1.npy')
     connectivity_data = np.load(connectivity_file)
 
-    npy_info_file = pjoin(connect_dir, 'npy_info')
+    npy_info_file = pjoin(connect_dir, 'connectivity_info')
     all_rois = CsvReader(npy_info_file).to_dict(1)['region_name']
 
     group_labels_file = pjoin(connect_dir, 'group_labels_4run_1200')
     group_labels = np.array(open(group_labels_file).read().split(' '))
 
-    mean_sem_dir = pjoin(connect_dir, 'mean_sem_sess1')
+    mean_sem_dir = pjoin(connect_dir, 'mean_sem_sess1_new')
     if not os.path.exists(mean_sem_dir):
         os.makedirs(mean_sem_dir)
 
-    items = FFA_rois
+    items = subFFA_rois
     for item in items:
         seed_roi = item
         sub_connectivity_data = connectivity_data[group_labels == item[1]]
         samples, sample_names = get_samples(sub_connectivity_data,
-                                            seed_roi, all_rois, item2exclude[item] + subFFA_rois)
+                                            seed_roi, all_rois, item2exclude[item])
         for idx, sample_name in enumerate(sample_names):
             if sample_name in FFA2name.keys():
                 sample_names[idx] = FFA2name[sample_name]
@@ -89,8 +89,8 @@ def mean_sem_plot_bar():
 
     mean_sem_dir = pjoin(connect_dir, 'mean_sem_sess1')
     items_list = [
-        ['l2_FFA', 'l1_FFA'],
-        ['r2_FFA', 'r1_FFA']
+        ['l2_FFA1', 'l1_FFA1'],
+        ['r2_FFA1', 'r1_FFA1']
     ]
     for items in items_list:
         mean_sem_files = [pjoin(mean_sem_dir, item) for item in items]
@@ -108,7 +108,7 @@ def mean_sem_plot_radar():
     from commontool.io.io import CsvReader
 
     mean_sem_dir = pjoin(connect_dir, 'mean_sem_sess1')
-    items = ['l2_FFA', 'l1_FFA']
+    items = ['l2_FFA1', 'l1_FFA1']
     mean_sem_files = [pjoin(mean_sem_dir, item) for item in items]
     name2s = [FFA2name2[item] for item in items]
     ax = plt.subplot(111, polar=True)
@@ -257,6 +257,6 @@ def compare_plot_mat():
 
 
 if __name__ == '__main__':
-    # mean_sem_calc()
+    mean_sem_calc()
     # mean_sem_plot_bar()
-    mean_sem_plot_radar()
+    # mean_sem_plot_radar()

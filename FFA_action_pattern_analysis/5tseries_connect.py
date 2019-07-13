@@ -10,13 +10,13 @@ if __name__ == '__main__':
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     connect_dir = pjoin(project_dir, 's2_25_zscore/HAC_ward_euclidean/2clusters/rfMRI_connectivity/PAM_z165_p025_ROI')
     subject_ids_file = pjoin(connect_dir, 'subject_id_4run_1200')
-    tseries_LR_file1 = pjoin(connect_dir, '{subject}/rfMRI_REST2_LR.npy')
-    tseries_RL_file1 = pjoin(connect_dir, '{subject}/rfMRI_REST2_RL.npy')
+    tseries_LR_file1 = pjoin(connect_dir, '{subject}/rfMRI_REST1_LR.npy')
+    tseries_RL_file1 = pjoin(connect_dir, '{subject}/rfMRI_REST1_RL.npy')
     npy_info_file1 = pjoin(connect_dir, 'npy_info')
-    tseries_LR_file2 = pjoin(connect_dir, 'addition/{subject}/rfMRI_REST2_LR.npy')
-    tseries_RL_file2 = pjoin(connect_dir, 'addition/{subject}/rfMRI_REST2_RL.npy')
+    tseries_LR_file2 = pjoin(connect_dir, 'addition/{subject}/rfMRI_REST1_LR.npy')
+    tseries_RL_file2 = pjoin(connect_dir, 'addition/{subject}/rfMRI_REST1_RL.npy')
     npy_info_file2 = pjoin(connect_dir, 'addition/npy_info')
-    out_conn_file = pjoin(connect_dir, 'connectivity_sess2.npy')
+    out_conn_file = pjoin(connect_dir, 'connectivity_sess1.npy')
     out_info_file = pjoin(connect_dir, 'connectivity_info')
 
     subject_ids = np.array(open(subject_ids_file).read().splitlines())
