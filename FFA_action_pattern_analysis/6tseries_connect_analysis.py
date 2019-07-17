@@ -2,6 +2,7 @@ import os
 import numpy as np
 
 from os.path import join as pjoin
+from scipy.stats.stats import pearsonr
 from matplotlib import pyplot as plt
 
 FFA_rois = ['l1_FFA', 'l2_FFA', 'r1_FFA', 'r2_FFA']
@@ -20,18 +21,18 @@ FFA2name2 = {
     'r1_FFA1': 'G2_R_FG2', 'r1_FFA2': 'G2_R_FG4', 'r2_FFA1': 'G1_R_FG2', 'r2_FFA2': 'G1_R_FG4'
 }
 item2exclude = {
-    'l1_FFA': [r for r in FFA_rois if r != 'r1_FFA'] + subFFA_rois,
-    'l2_FFA': [r for r in FFA_rois if r != 'r2_FFA'] + subFFA_rois,
-    'r1_FFA': [r for r in FFA_rois if r != 'l1_FFA'] + subFFA_rois,
-    'r2_FFA': [r for r in FFA_rois if r != 'l2_FFA'] + subFFA_rois,
-    'l1_FFA1': [r for r in subFFA_rois if r[1] == '2'] + ['l1_FFA1'] + FFA_rois,
-    'l1_FFA2': [r for r in subFFA_rois if r[1] == '2'] + ['l1_FFA2'] + FFA_rois,
-    'r1_FFA1': [r for r in subFFA_rois if r[1] == '2'] + ['r1_FFA1'] + FFA_rois,
-    'r1_FFA2': [r for r in subFFA_rois if r[1] == '2'] + ['r1_FFA2'] + FFA_rois,
-    'l2_FFA1': [r for r in subFFA_rois if r[1] == '1'] + ['l2_FFA1'] + FFA_rois,
-    'l2_FFA2': [r for r in subFFA_rois if r[1] == '1'] + ['l2_FFA2'] + FFA_rois,
-    'r2_FFA1': [r for r in subFFA_rois if r[1] == '1'] + ['r2_FFA1'] + FFA_rois,
-    'r2_FFA2': [r for r in subFFA_rois if r[1] == '1'] + ['r2_FFA2'] + FFA_rois,
+    'l1_FFA': FFA_rois + subFFA_rois,
+    'l2_FFA': FFA_rois + subFFA_rois,
+    'r1_FFA': FFA_rois + subFFA_rois,
+    'r2_FFA': FFA_rois + subFFA_rois,
+    'l1_FFA1': subFFA_rois + FFA_rois,
+    'l1_FFA2': subFFA_rois + FFA_rois,
+    'r1_FFA1': subFFA_rois + FFA_rois,
+    'r1_FFA2': subFFA_rois + FFA_rois,
+    'l2_FFA1': subFFA_rois + FFA_rois,
+    'l2_FFA2': subFFA_rois + FFA_rois,
+    'r2_FFA1': subFFA_rois + FFA_rois,
+    'r2_FFA2': subFFA_rois + FFA_rois,
     'L_OFA_g1': ['L_OFA', 'l2_FFA', 'r2_FFA'] + [r for r in subFFA_rois if r[1] == '2'],
     'L_OFA_g2': ['L_OFA', 'l1_FFA', 'r1_FFA'] + [r for r in subFFA_rois if r[1] == '1'],
     'R_OFA_g1': ['R_OFA', 'l2_FFA', 'r2_FFA'] + [r for r in subFFA_rois if r[1] == '2'],
@@ -58,7 +59,7 @@ def mean_sem_calc():
     from commontool.io.io import CsvReader
     from commontool.algorithm.statistics import calc_mean_sem
 
-    connectivity_file = pjoin(connect_dir, 'connectivity_sess1.npy')
+    connectivity_file = pjoin(connect_dir, 'connectivity_sess2.npy')
     connectivity_data = np.load(connectivity_file)
 
     npy_info_file = pjoin(connect_dir, 'connectivity_info')
@@ -67,11 +68,11 @@ def mean_sem_calc():
     group_labels_file = pjoin(connect_dir, 'group_labels_4run_1200')
     group_labels = np.array(open(group_labels_file).read().split(' '))
 
-    mean_sem_dir = pjoin(connect_dir, 'mean_sem_sess1_new')
+    mean_sem_dir = pjoin(connect_dir, 'mean_sem_sess2')
     if not os.path.exists(mean_sem_dir):
         os.makedirs(mean_sem_dir)
 
-    items = subFFA_rois
+    items = FFA_rois
     for item in items:
         seed_roi = item
         sub_connectivity_data = connectivity_data[group_labels == item[1]]
@@ -141,22 +142,22 @@ def compare():
     from commontool.io.io import CsvReader
     from commontool.algorithm.statistics import ttest_ind_pairwise
 
-    connectivity_file = pjoin(connect_dir, 'connectivity.npy')
+    connectivity_file = pjoin(connect_dir, 'connectivity_sess1.npy')
     connectivity_data = np.load(connectivity_file)
 
-    npy_info_file = pjoin(connect_dir, 'npy_info')
+    npy_info_file = pjoin(connect_dir, 'connectivity_info')
     all_rois = CsvReader(npy_info_file).to_dict(1)['region_name']
 
     group_labels_file = pjoin(connect_dir, 'group_labels_4run_1200')
     group_labels = np.array(open(group_labels_file).read().split(' '))
 
-    compare_dir = pjoin(connect_dir, 'compare_sess2')
+    compare_dir = pjoin(connect_dir, 'compare_sess1')
     if not os.path.exists(compare_dir):
         os.makedirs(compare_dir)
 
     item_pairs = [
-        ['l1_FFA', 'l2_FFA'],
-        ['r1_FFA', 'r2_FFA']
+        ['l1_FFA1', 'l2_FFA1'],
+        ['r1_FFA1', 'r2_FFA1']
     ]
     for item1, item2 in item_pairs:
         seed_roi1 = item1
@@ -176,9 +177,16 @@ def compare_plot_bar():
     # https://www.statsmodels.org/dev/_modules/statsmodels/stats/multitest.html
     from statsmodels.stats.multitest import multipletests
     from commontool.algorithm.statistics import plot_compare
+    from commontool.io.io import CsvReader
+
+    compare_dir = pjoin(connect_dir, 'compare_sess2')
+    item_pairs = [
+        ['l1_FFA1', 'l2_FFA1'],
+        # ['l1_FFA2', 'l2_FFA2']
+    ]
 
     multi_test_corrected = True
-    alpha = 1.1
+    alpha = 0.01
     for item1, item2, in item_pairs:
         file_name = '{}_vs_{}'.format(item1, item2)
         compare_file = pjoin(compare_dir, file_name)
@@ -190,6 +198,8 @@ def compare_plot_bar():
         ps = [p for p in ps if p < alpha]
         print('\n'.join(list(map(str, zip(sample_names, ps)))))
         plot_compare(ps, sample_names, title=file_name)
+
+    plt.show()
 
 
 def compare_plot_mat():
@@ -256,7 +266,46 @@ def compare_plot_mat():
         plt.show()
 
 
+def connect_pattern_plot():
+    from commontool.io.io import CsvReader
+
+    mean_sem_dir = pjoin(connect_dir, 'mean_sem_sess2')
+    items = ['l2_FFA1', 'l2_FFA2', 'l1_FFA1', 'l1_FFA2']
+    mean_sem_files = [pjoin(mean_sem_dir, item) for item in items]
+    name2s = [FFA2name2[item] for item in items]
+    connect_patterns = []
+    item_num = len(items)
+    for idx, mean_sem_file in enumerate(mean_sem_files):
+        mean_sem_dict = CsvReader(mean_sem_file).to_dict(1)
+        sample_names = mean_sem_dict['sample_name']
+        means = [float(mean_sem_dict['mean'][mean_sem_dict['sample_name'].index(i)]) for i in sample_names]
+        connect_patterns.append(means)
+    corr_arr = np.zeros((item_num, item_num))
+    for i, pattern in enumerate(connect_patterns):
+        for j in range(i, item_num):
+            corr = pearsonr(pattern, connect_patterns[j])[0]
+            corr_arr[i, j] = corr
+            corr_arr[j, i] = corr
+
+    plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.labelbottom'] = False
+    plt.rcParams['xtick.top'] = plt.rcParams['xtick.labeltop'] = True
+    fig, ax = plt.subplots()
+    im = ax.imshow(corr_arr, cmap='jet')
+    plt.xticks(range(item_num), name2s)
+    plt.yticks(range(item_num), name2s)
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label('pearsonr')
+    for i in range(item_num):
+        for j in range(item_num):
+            ax.text(j, i, '{:.2f}'.format(corr_arr[i, j]), ha="center", va="center", color='w', fontsize=16)
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
-    mean_sem_calc()
+    # mean_sem_calc()
     # mean_sem_plot_bar()
     # mean_sem_plot_radar()
+    # compare()
+    # compare_plot_bar()
+    connect_pattern_plot()
