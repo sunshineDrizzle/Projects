@@ -376,7 +376,7 @@ if __name__ == '__main__':
             v_plotter.axes_twin[0].set_ylabel(metric_pair[1], color='r')
             v_plotter.axes_twin[0].tick_params('y', colors='r')
 
-        # v_plotter.add_vline_mover(vline_idx=vline_idx, x_round=True)
+        v_plotter.add_vline_mover(vline_idx=vline_idx, x_round=True)
         v_plotter.figure.tight_layout()
         vline_plotter_holder.append(v_plotter)
     # -----------------------

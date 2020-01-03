@@ -9,8 +9,8 @@ if __name__ == '__main__':
     # predefine some variates
     # -----------------------
     # predefine parameters
-    cluster_nums = [2]
-    hemi = 'lh'
+    cluster_nums = [50]
+    hemi = 'rh'
     brain_structure = {
         'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
@@ -26,16 +26,16 @@ if __name__ == '__main__':
     project_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_clustering'
     analysis_dir = pjoin(project_dir, 's2_25_zscore')
     cluster_num_dirs = pjoin(analysis_dir, 'HAC_ward_euclidean/{}clusters')
-    FFA_label_files = pjoin(project_dir, 'data/LiuLab_face-avg/label/{}FFA.label')
-    maps_file = pjoin(project_dir, 'data/LiuLab_face-avg/LiuLab_495_FACE-AVG_zstat_fsaverage_{}.nii.gz')
+    FFA_label_files = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/label/{}FFA_25.label')
+    maps_file = pjoin(project_dir, 'data/HCP_1080/face-avg_s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
     FFA_pattern_files = pjoin(analysis_dir, '{}FFA_patterns.nii.gz')
     # -----------------------
 
     # get data
     FFA_vertices = nib.freesurfer.read_label(FFA_label_files.format(hemi[0]))
-    # reader = CiftiReader(maps_file)
-    # maps = reader.get_data(brain_structure[hemi], True)
-    maps = nib.load(maps_file.format(hemi)).get_data()
+    reader = CiftiReader(maps_file)
+    maps = reader.get_data(brain_structure[hemi], True)
+    # maps = nib.load(maps_file.format(hemi)).get_data()
     FFA_patterns = nib.load(FFA_pattern_files.format(hemi[0])).get_data()
 
     # analyze labels
@@ -109,8 +109,8 @@ if __name__ == '__main__':
         # save2nifti(pjoin(activation_dir, 'max_num_map_z{}.nii.gz'.format(acti_thr)), max_num_map)
         # save2nifti(pjoin(activation_dir, 'max_prob_map_z{}.nii.gz'.format(acti_thr)), max_prob_map)
         # save2nifti(pjoin(activation_dir, 'top_prob_ROIs_z{}_p{}.nii.gz'.format(acti_thr, prob_thr)), top_prob_ROIs)
-        save2nifti(pjoin(activation_dir, '{}_top_acti_ROIs_percent{}.nii.gz'.format(hemi, int(top_acti_percent*100))),
-                   top_acti_ROIs, header=header)
+        # save2nifti(pjoin(activation_dir, '{}_top_acti_ROIs_percent{}.nii.gz'.format(hemi, int(top_acti_percent*100))),
+        #            top_acti_ROIs, header=header)
         save2nifti(pjoin(activation_dir, '{}_pattern_mean_maps.nii.gz'.format(hemi)), pattern_mean_maps)
 
         # output statistics
