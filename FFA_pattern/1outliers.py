@@ -1,9 +1,12 @@
 
 
 def calc_reliability():
+    """
+    Calculate FFA activation reliability
+    """
     import os
-    import numpy as np
     import nibabel as nib
+    import pickle as pkl
 
     from os.path import join as pjoin
     from scipy.stats import pearsonr
@@ -15,35 +18,43 @@ def calc_reliability():
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
     }
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    data_dir = pjoin(proj_dir, 'data/HCP_1080')
+    data_dir = pjoin(proj_dir, 'data')
     trg_dir = pjoin(proj_dir, 'analysis/1outliers')
     if not os.path.isdir(trg_dir):
         os.makedirs(trg_dir)
 
-    test_activ_file = pjoin(data_dir, 'face-avg_s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
-    retest_activ_file = pjoin(data_dir, 'face-avg_s2/retest/S1200_retest_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
-    test_subject_ids_file = pjoin(data_dir, 'subject_id')
-    retest_subject_ids_file = pjoin(data_dir, 'face-avg_s2/retest/subject_id')
-    FFA_vertices_file = pjoin(data_dir, f'face-avg_s2/label/{hemi[0]}FFA_25_lr_merge.label')
+    test_activ_file = pjoin(data_dir, 'HCP_1080/face-avg_s2/S1200.1080.FACE-AVG_level2_zstat_hp200_s2_MSMAll.dscalar.nii')
+    retest_activ_file = pjoin(data_dir, f'HCP/emotion/analysis_s2/cope3_face-shape_zstat_{hemi}.nii.gz')
+    test_subject_ids_file = pjoin(data_dir, 'HCP_1080/subject_id')
+    retest_subject_ids_file = pjoin(data_dir, 'HCP/emotion/analysis_s2/cope3_subject_id')
+    FFA_vertices_file = pjoin(data_dir, f'HCP_1080/face-avg_s2/label/{hemi[0]}FFA_25.label')
 
+    # get subjects
     test_subject_ids = open(test_subject_ids_file).read().splitlines()
     retest_subject_ids = open(retest_subject_ids_file).read().splitlines()
+    subj_ids = sorted(set(test_subject_ids).intersection(retest_subject_ids))
     test_indices = []
-    for sid in retest_subject_ids:
+    retest_indices = []
+    for sid in subj_ids:
         test_indices.append(test_subject_ids.index(sid))
-    FFA_vertices = nib.freesurfer.read_label(FFA_vertices_file)
+        retest_indices.append(retest_subject_ids.index(sid))
 
+    # get activation
+    FFA_vertices = nib.freesurfer.read_label(FFA_vertices_file)
     test_reader = CiftiReader(test_activ_file)
-    retest_reader = CiftiReader(retest_activ_file)
     test_activ_FFA = test_reader.get_data(brain_structure[hemi], True)[test_indices][:, FFA_vertices]
-    retest_activ_FFA = retest_reader.get_data(brain_structure[hemi], True)[:, FFA_vertices]
+    retest_activ_FFA = nib.load(retest_activ_file).get_data().squeeze().T
+    retest_activ_FFA = retest_activ_FFA[retest_indices][:, FFA_vertices]
 
     corrs = [pearsonr(i, j)[0] for i, j in zip(test_activ_FFA, retest_activ_FFA)]
-    np.save(pjoin(trg_dir, f'{hemi[0]}FFA_reliability.npy'), np.array(corrs))
+    reliability_dict = {'sid': subj_ids, 'corr': corrs}
+    out_path = pjoin(trg_dir, f'{hemi[0]}FFA_reliability.pkl')
+    pkl.dump(reliability_dict, open(out_path, 'wb'))
 
 
 def plot_reliability():
     import numpy as np
+    import pickle as pkl
 
     from os.path import join as pjoin
     from matplotlib import pyplot as plt
@@ -51,11 +62,13 @@ def plot_reliability():
 
     trg_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern/analysis/1outliers'
 
-    rFFA_reliability = np.load(pjoin(trg_dir, 'rFFA_reliability.npy'))
-    lFFA_reliability = np.load(pjoin(trg_dir, 'lFFA_reliability.npy'))
-    FFA_reliability = np.r_[rFFA_reliability, lFFA_reliability]
-    bins = np.linspace(FFA_reliability.min(), FFA_reliability.max(), 10)
-    plt.figure(figsize=(6, 4))
+    rFFA_reliability = pkl.load(open(pjoin(trg_dir, 'rFFA_reliability.pkl'), 'rb'))
+    lFFA_reliability = pkl.load(open(pjoin(trg_dir, 'lFFA_reliability.pkl'), 'rb'))
+    FFA_reliability = rFFA_reliability['corr'] + lFFA_reliability['corr']
+    print(len(lFFA_reliability['sid']))
+    print(len(rFFA_reliability['sid']))
+    bins = np.linspace(min(FFA_reliability), max(FFA_reliability), 20)
+    # plt.figure(figsize=(6, 4))
     _, _, patches = plt.hist(FFA_reliability, bins, color='white', edgecolor='black')
     plt.xlabel('correlation')
     plt.title('FFA pattern reliability')
@@ -208,8 +221,8 @@ def plot_pattern_mds():
 
 if __name__ == '__main__':
     # calc_reliability()
-    # plot_reliability()
+    plot_reliability()
     # calc_corr_lr(out_name='1080_lr_corr.npy')
     # plot_corr_lr(out_name='1080_lr_corr_hist.jpg')
-    calc_pattern_mds(2, 'rFFA_pattern_mds2.npy')
-    plot_pattern_mds()
+    # calc_pattern_mds(2, 'rFFA_pattern_mds2.npy')
+    # plot_pattern_mds()
