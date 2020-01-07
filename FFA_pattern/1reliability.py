@@ -112,7 +112,45 @@ def select_subject():
         wf.write('\n'.join(subj_ids_selected))
 
 
+def merge_activation():
+    import nibabel as nib
+
+    from os.path import join as pjoin
+    from commontool.io.io import CiftiReader, save2nifti
+
+    hemi = 'rh'
+    brain_structure = {
+        'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    }
+    proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
+    data_dir = pjoin(proj_dir, 'data/HCP')
+    trg_dir = pjoin(proj_dir, f'analysis/clustering_{hemi}')
+    subj_id_file = pjoin(trg_dir, 'subject_id')
+    subj_id_wm_file = pjoin(data_dir, 'wm/analysis_s2/subject_id')
+    subj_id_emotion_file = pjoin(data_dir, 'emotion/analysis_s2/subject_id')
+    activ_wm_file = pjoin(data_dir, 'wm/analysis_s2/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
+    activ_emotion_file = pjoin(data_dir, f'emotion/analysis_s2/cope3_face-shape_zstat_{hemi}.nii.gz')
+
+    subj_ids = open(subj_id_file).read().splitlines()
+    subj_ids_wm = open(subj_id_wm_file).read().splitlines()
+    subj_ids_emotion = open(subj_id_emotion_file).read().splitlines()
+    activ_wm = CiftiReader(activ_wm_file).get_data(brain_structure[hemi], True)
+    activ_emotion = nib.load(activ_emotion_file).get_data().squeeze().T
+
+    wm_indices = []
+    emotion_indices = []
+    for i in subj_ids:
+        wm_indices.append(subj_ids_wm.index(i))
+        emotion_indices.append(subj_ids_emotion.index(i))
+
+    activ = (activ_wm[wm_indices] + activ_emotion[emotion_indices]) / 2
+    activ = activ.T[:, None, None, :]
+    save2nifti(pjoin(trg_dir, f'activation_{hemi}.nii.gz'), activ)
+
+
 if __name__ == '__main__':
     # calc_reliability()
-    plot_reliability()
+    # plot_reliability()
     # select_subject()
+    merge_activation()
