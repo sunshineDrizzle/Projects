@@ -1,30 +1,3 @@
-from community import best_partition
-from commontool.algorithm.graph import connectivity_grow
-
-
-def get_patch_by_crg(vertices, edge_list):
-    patches = []
-    while vertices:
-        seed = vertices.pop()
-        patch = connectivity_grow([[seed]], edge_list)[0]
-        patches.append(list(patch))
-        vertices.difference_update(patch)
-
-    return patches
-
-
-def get_patch_by_LV(graph):
-    partition = best_partition(graph)
-    patches_dict = dict()
-    for label in partition.values():
-        patches_dict[label] = []
-    for vtx, label in partition.items():
-        patches_dict[label].append(vtx)
-    patches = [patches_dict[label] for label in sorted(patches_dict.keys())]
-
-    return patches
-
-
 if __name__ == '__main__':
     import os
     import numpy as np
