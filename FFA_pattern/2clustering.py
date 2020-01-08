@@ -17,11 +17,11 @@ def get_roi_pattern():
 
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    trg_dir = pjoin(proj_dir, f'analysis/clustering_{hemi}/zscore')
+    trg_dir = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/zscore')
     if not os.path.isdir(trg_dir):
         os.makedirs(trg_dir)
     roi_file = pjoin(proj_dir, f'data/HCP/label/MMPprob_OFA_FFA_thr1_{hemi}.label')
-    activ_file = pjoin(trg_dir, 'activation.nii.gz')
+    activ_file = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/activation.nii.gz')
     # geo_files = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
     #             'HCP_S1200_GroupAvg_v1/S1200.{}.white_MSMAll.32k_fs_LR.surf.gii'
     geo_files = None
@@ -124,5 +124,5 @@ def clustering():
 
 
 if __name__ == '__main__':
-    # get_roi_pattern()
-    clustering()
+    get_roi_pattern()
+    # clustering()

@@ -12,21 +12,21 @@ def calc_reliability():
     from scipy.stats import pearsonr
     from commontool.io.io import CiftiReader
 
-    hemi = 'rh'
+    hemi = 'lh'
     brain_structure = {
         'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
     }
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
     data_dir = pjoin(proj_dir, 'data/HCP')
-    trg_dir = pjoin(proj_dir, 'analysis/reliability')
+    trg_dir = pjoin(proj_dir, 'analysis/s4_reliability')
     if not os.path.isdir(trg_dir):
         os.makedirs(trg_dir)
 
-    test_activ_file = pjoin(data_dir, 'wm/analysis_s2/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
-    retest_activ_file = pjoin(data_dir, f'emotion/analysis_s2/cope3_face-shape_zstat_{hemi}.nii.gz')
-    test_subject_ids_file = pjoin(data_dir, 'wm/analysis_s2/subject_id')
-    retest_subject_ids_file = pjoin(data_dir, 'emotion/analysis_s2/subject_id')
+    test_activ_file = pjoin(data_dir, 'wm/analysis_s4/S1200_1080_WM_cope19_FACE-AVG_s4_MSMAll_32k_fs_LR.dscalar.nii')
+    retest_activ_file = pjoin(data_dir, f'emotion/analysis_s4/cope3_face-shape_zstat_{hemi}.nii.gz')
+    test_subject_ids_file = pjoin(data_dir, 'wm/subject_id')
+    retest_subject_ids_file = pjoin(data_dir, 'emotion/analysis_s4/subject_id')
     mask_vertices_file = pjoin(data_dir, f'label/MMPprob_OFA_FFA_thr1_{hemi}.label')
 
     # get subjects
@@ -62,7 +62,7 @@ def plot_reliability():
 
     hemi = 'rh'  # lh, rh, or both
     thr = 0.5
-    trg_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern/analysis/reliability'
+    trg_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern/analysis/s4_reliability'
 
     if hemi == 'both':
         reliability_lh = pkl.load(open(pjoin(trg_dir, 'reliability_lh.pkl'), 'rb'))
@@ -98,8 +98,8 @@ def select_subject():
     hemi = 'rh'
     thr = 0.5
     anal_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern/analysis'
-    src_dir = pjoin(anal_dir, 'reliability')
-    trg_dir = pjoin(anal_dir, f'clustering_{hemi}')
+    src_dir = pjoin(anal_dir, 's4_reliability')
+    trg_dir = pjoin(anal_dir, f's4_clustering_{hemi}_thr{thr}')
     if not os.path.isdir(trg_dir):
         os.makedirs(trg_dir)
 
@@ -112,7 +112,7 @@ def select_subject():
         wf.write('\n'.join(subj_ids_selected))
 
 
-def merge_activation():
+def get_activation():
     import nibabel as nib
 
     from os.path import join as pjoin
@@ -125,26 +125,27 @@ def merge_activation():
     }
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
     data_dir = pjoin(proj_dir, 'data/HCP')
-    trg_dir = pjoin(proj_dir, f'analysis/clustering_{hemi}')
+    trg_dir = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5')
     subj_id_file = pjoin(trg_dir, 'subject_id')
-    subj_id_wm_file = pjoin(data_dir, 'wm/analysis_s2/subject_id')
-    subj_id_emotion_file = pjoin(data_dir, 'emotion/analysis_s2/subject_id')
-    activ_wm_file = pjoin(data_dir, 'wm/analysis_s2/S1200_1080_WM_cope19_FACE-AVG_s2_MSMAll_32k_fs_LR.dscalar.nii')
-    activ_emotion_file = pjoin(data_dir, f'emotion/analysis_s2/cope3_face-shape_zstat_{hemi}.nii.gz')
+    subj_id_wm_file = pjoin(data_dir, 'wm/subject_id')
+    # subj_id_emotion_file = pjoin(data_dir, 'emotion/analysis_s2/subject_id')
+    activ_wm_file = pjoin(data_dir, 'wm/analysis_s4/S1200_1080_WM_cope19_FACE-AVG_s4_MSMAll_32k_fs_LR.dscalar.nii')
+    # activ_emotion_file = pjoin(data_dir, f'emotion/analysis_s2/cope3_face-shape_zstat_{hemi}.nii.gz')
 
     subj_ids = open(subj_id_file).read().splitlines()
     subj_ids_wm = open(subj_id_wm_file).read().splitlines()
-    subj_ids_emotion = open(subj_id_emotion_file).read().splitlines()
+    # subj_ids_emotion = open(subj_id_emotion_file).read().splitlines()
     activ_wm = CiftiReader(activ_wm_file).get_data(brain_structure[hemi], True)
-    activ_emotion = nib.load(activ_emotion_file).get_data().squeeze().T
+    # activ_emotion = nib.load(activ_emotion_file).get_data().squeeze().T
 
     wm_indices = []
-    emotion_indices = []
+    # emotion_indices = []
     for i in subj_ids:
         wm_indices.append(subj_ids_wm.index(i))
-        emotion_indices.append(subj_ids_emotion.index(i))
+        # emotion_indices.append(subj_ids_emotion.index(i))
 
-    activ = (activ_wm[wm_indices] + activ_emotion[emotion_indices]) / 2
+    # activ = (activ_wm[wm_indices] + activ_emotion[emotion_indices]) / 2
+    activ = activ_wm[wm_indices]
     activ = activ.T[:, None, None, :]
     save2nifti(pjoin(trg_dir, 'activation.nii.gz'), activ)
 
@@ -153,4 +154,4 @@ if __name__ == '__main__':
     # calc_reliability()
     # plot_reliability()
     # select_subject()
-    merge_activation()
+    get_activation()
