@@ -146,7 +146,7 @@ def merge_activation():
 
     activ = (activ_wm[wm_indices] + activ_emotion[emotion_indices]) / 2
     activ = activ.T[:, None, None, :]
-    save2nifti(pjoin(trg_dir, f'activation_{hemi}.nii.gz'), activ)
+    save2nifti(pjoin(trg_dir, 'activation.nii.gz'), activ)
 
 
 if __name__ == '__main__':
