@@ -1,13 +1,17 @@
+import os
 import itertools
 import numpy as np
 
+from os.path import join as pjoin
 from scipy import stats
 from sklearn.cluster import AgglomerativeClustering, KMeans
+from matplotlib import pyplot as plt
 from networkx import edge_betweenness_centrality as betweenness
 from networkx.algorithms.community.centrality import girvan_newman
 from community import best_partition
 from commontool.algorithm.triangular_mesh import get_n_ring_neighbor
 from commontool.algorithm.graph import connectivity_grow
+from commontool.algorithm.plot import VlineMoverPlotter, imshow
 
 
 def get_patch_by_crg(vertices, edge_list):
@@ -161,3 +165,112 @@ def k_means(data, cluster_nums, n_init=10):
         print('KMeans finished: {}'.format(n_clusters))
 
     return labels_list
+
+
+def gap_stat(data, cluster_nums):
+    from gap_statistic import OptimalK
+
+    optimalK = OptimalK()
+    return optimalK(data, cluster_array=cluster_nums)
+
+
+def gap_stat_mine(data, cluster_nums, ref_num=10, cluster_method=None):
+    from commontool.algorithm.tool import gap_statistic
+
+    labels_list, Wks, Wks_refs_log_mean, gaps, s, k_selected = \
+        gap_statistic(data, cluster_nums, ref_num, cluster_method)
+
+    x = np.arange(len(cluster_nums))
+    cluster_nums = np.array(cluster_nums)
+    plt.figure()
+    plt.plot(x, Wks, 'b.-')
+    plt.xlabel('#subgroup')
+    plt.ylabel(('W\u2096'))
+    if len(x) > 20:
+        middle_idx = int(len(x) / 2)
+        plt.xticks(x[[0, middle_idx, -1]], cluster_nums[[0, middle_idx, -1]])
+    else:
+        plt.xticks(x, cluster_nums)
+
+    Wks_log = np.log(Wks)
+    plt.figure()
+    plt.plot(x, Wks_log, 'b.-')
+    plt.plot(x, Wks_refs_log_mean, 'r.-')
+    plt.xlabel('#subgroup')
+    plt.ylabel('log(W\u2096)')
+    if len(x) > 20:
+        middle_idx = int(len(x) / 2)
+        plt.xticks(x[[0, middle_idx, -1]], cluster_nums[[0, middle_idx, -1]])
+    else:
+        plt.xticks(x, cluster_nums)
+
+    return labels_list, gaps, s, k_selected
+
+
+class ClusteringVlineMoverPlotter(VlineMoverPlotter):
+
+    def __init__(self, data, labels_list, clustering_dir, clustering_result_dir,
+                 nrows=1, ncols=1, sharex=False, sharey=False,
+                 squeese=True, subplot_kw=None, gridspec_kw=None, **fig_kw):
+        super(ClusteringVlineMoverPlotter, self).__init__(nrows, ncols, sharex, sharey,
+                                                          squeese, subplot_kw, gridspec_kw, **fig_kw)
+        self.data = data
+        self.labels_list = labels_list
+        self.clustering_dir = clustering_dir
+        self.clustering_result_dir = clustering_result_dir
+
+    def _on_clicked(self, event):
+        if event.button == 3:
+            # do something on right click
+            if event.inaxes in self.axes:
+                vline_mover = self.vline_movers[self.axes == event.inaxes][0]
+            elif event.inaxes in self.axes_twin:
+                vline_mover = self.vline_movers[self.axes_twin == event.inaxes][0]
+            else:
+                raise RuntimeError("no valid axis")
+
+            labels_idx = int(vline_mover.x[0])
+            labels = self.labels_list[labels_idx]
+            labels_uniq = sorted(set(labels))
+            n_clusters = len(labels_uniq)
+            n_clusters_dir = pjoin(self.clustering_dir, '{}clusters'.format(n_clusters))
+            if not os.path.exists(n_clusters_dir):
+                os.makedirs(n_clusters_dir)
+
+            # create soft link to corresponding labels' file
+            labels_file = pjoin(self.clustering_result_dir, '{}group_labels'.format(n_clusters))
+            os.system('cd {} && ln -s {} group_labels'.format(n_clusters_dir, labels_file))
+
+            # show heatmap for rearranged data
+            data_rearranged = np.zeros((0, self.data.shape[1]))
+            for label in labels_uniq:
+                # get subgroup data
+                subgroup_data = self.data[labels == label]
+                data_rearranged = np.r_[data_rearranged, subgroup_data]
+            imshow(data_rearranged, 'vertices', 'subjects', 'jet', 'activation')
+
+            plt.show()
+
+        elif event.button == 1:
+            # do something on left click
+            # Here is earlier than VlineMover's left button response. So,
+            # we acquire x index by event.xdata.
+            if event.inaxes in self.axes or event.inaxes in self.axes_twin:
+                n_labels = len(self.labels_list)
+                if n_labels > 2:
+                    # prepare
+                    x = np.arange(n_labels)
+                    x_labels = np.array([len(set(labels)) for labels in self.labels_list])
+                    xticks = x[[0, -1]]
+                    xticklabels = x_labels[[0, -1]]
+
+                    # update or not
+                    new_idx = int(round(event.xdata))
+                    if new_idx not in xticks:
+                        xticks = np.append(xticks, new_idx)
+                        n_clusters = x_labels[new_idx]
+                        xticklabels = np.append(xticklabels, n_clusters)
+
+                    # plot
+                    event.inaxes.set_xticks(xticks)
+                    event.inaxes.set_xticklabels(xticklabels)

@@ -59,14 +59,13 @@ def clustering():
     print('Start: predefine some variates')
     # -----------------------
     # predefine parameters
-    hemi = 'rh'  # 'lh', 'rh', 'both'
     clustering_method = 'HAC_ward_euclidean'  # 'HAC_average_dice', 'KM', 'LV', 'GN'
     max_n_cluster = 100
     is_graph_needed = True if clustering_method in ('LV', 'GN') else False
     weight_type = ('dissimilar', 'euclidean')  # only work when is_graph_needed is True
 
     # predefine paths
-    src_dir = f'/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/clustering_{hemi}/zscore'
+    src_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/s4_clustering_rh_thr0.5/zscore'
     trg_dir = pjoin(src_dir, f'{clustering_method}/results')
     if not os.path.exists(trg_dir):
         os.makedirs(trg_dir)
@@ -123,6 +122,280 @@ def clustering():
     plt.show()
 
 
+def assess_n_cluster():
+    import os
+    import numpy as np
+    import nibabel as nib
+
+    from os.path import join as pjoin
+    from scipy import stats
+    from matplotlib import pyplot as plt
+    from commontool.io.io import CiftiReader
+    from commontool.algorithm.tool import elbow_score
+    from FFA_pattern.tool import ClusteringVlineMoverPlotter
+
+    print('Start: predefine some variates')
+    # -----------------------
+    # predefine parameters
+    hemi = 'rh'  # 'lh', 'rh', 'both'
+    brain_structure = {
+        'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    }
+    weight_type = ('dissimilar', 'euclidean')
+    clustering_method = 'HAC_ward_euclidean'
+    max_n_cluster = 50
+    # dice, modularity, silhouette, gap statistic, elbow_inner_standard
+    # elbow_inner_centroid, elbow_inner_pairwise, elbow_inter_centroid, elbow_inter_pairwise
+    assessment_metric_pairs = [
+        # ['dice', 'modularity'],
+        ['elbow_inner_standard'],
+        # ['modularity'],
+        # ['silhouette'],
+        # ['gap statistic']
+    ]
+    assessments_dict = dict()
+    for metric_pair in assessment_metric_pairs:
+        for metric in metric_pair:
+            assessments_dict[metric] = []
+    is_graph_needed = 'modularity' in assessments_dict.keys()
+
+    # predefine paths
+    proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
+    pattern_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5/zscore')
+    meth_dir = pjoin(pattern_dir, clustering_method)
+    result_dir = pjoin(meth_dir, 'results')
+    roi_files = pjoin(proj_dir, 'data/HCP/label/MMPprob_OFA_FFA_thr1_{}.label')
+    activ_file = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5/activation.nii.gz')
+    pattern_file = pjoin(pattern_dir, 'roi_pattern.npy')
+    # -----------------------
+    print('Finish: predefine some variates')
+
+    print('Start: prepare data')
+    # -----------------------
+    # prepare patterns
+    # reader = CiftiReader(activ_file)
+    if hemi == 'both':
+        roi_lh = nib.freesurfer.read_label(roi_files.format('lh'))
+        roi_rh = nib.freesurfer.read_label(roi_files.format('rh'))
+        # activ_roi_lh = reader.get_data(brain_structure['lh'], True)[:, roi_lh]
+        # activ_roi_rh = reader.get_data(brain_structure['rh'], True)[:, roi_rh]
+        activ_roi_lh = nib.load(activ_file.format('lh')).get_data().squeeze().T[:, roi_lh]
+        activ_roi_rh = nib.load(activ_file.format('rh')).get_data().squeeze().T[:, roi_rh]
+        activ_roi = np.c_[activ_roi_lh, activ_roi_rh]
+    else:
+        roi = nib.freesurfer.read_label(roi_files.format(hemi))
+        # activ_roi = reader.get_data(brain_structure[hemi], True)[:, roi]
+        activ_roi = nib.load(activ_file).get_data().squeeze().T[:, roi]
+    patterns = np.load(pattern_file)
+    # -----------------------
+    print('Finish: prepare data')
+
+    # structure graph
+    # -----------------------
+    if is_graph_needed:
+        from commontool.algorithm.graph import array2graph
+
+        print('Start: structure graph')
+        graph = array2graph(patterns, weight_type, edges='upper_right_triangle')
+        print('Finish: structure graph')
+    else:
+        graph = None
+    # -----------------------
+
+    print('Start: calculate assessments')
+    # -----------------------
+    labels_list = []
+    labels_files = [pjoin(result_dir, item) for item in os.listdir(result_dir)
+                    if 'group_labels' in item]
+    for labels_file in labels_files:
+        labels_list.append(np.array(open(labels_file).read().split(' '), dtype=np.uint16))
+    labels_list.sort(key=lambda x: len(set(x)))
+    n_clusters = np.array([len(set(labels)) for labels in labels_list])
+    indices = np.where(n_clusters > max_n_cluster)[0]
+    if len(indices):
+        end_idx = indices[0]
+        labels_list = labels_list[:end_idx]
+        n_clusters = n_clusters[:end_idx]
+    n_labels = len(labels_list)
+    for idx, labels in enumerate(labels_list):
+        labels_uniq = np.unique(labels)
+        for metric in assessments_dict.keys():
+            if metric == 'dice':
+                from commontool.algorithm.tool import calc_overlap
+
+                sub_dices = []
+                for label in labels_uniq:
+                    subgroup_activ_roi = np.atleast_2d(activ_roi[labels == label])
+                    subgroup_activ_roi_mean = np.mean(subgroup_activ_roi, 0)
+
+                    collection1 = np.where(subgroup_activ_roi_mean > 2.3)[0]
+                    collection2s = [np.where(i > 2.3)[0] for i in subgroup_activ_roi]
+                    tmp_dices = map(lambda c2: calc_overlap(collection1, c2), collection2s)
+                    sub_dices.extend(tmp_dices)
+                assessments_dict[metric].append(sub_dices)
+
+            elif metric == 'modularity':
+                from community import modularity
+
+                partition_dict = {k: v for k, v in enumerate(labels)}
+                assessments_dict[metric].append(modularity(partition_dict, graph, weight='weight'))
+
+            elif metric == 'silhouette':
+                from sklearn.metrics import silhouette_score
+
+                # https://stackoverflow.com/questions/19197715/scikit-learn-k-means-elbow-criterion
+                # http://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html#sklearn.metrics.silhouette_score
+                if len(labels_uniq) > 1:
+                    assessments_dict[metric].append(silhouette_score(patterns, labels,
+                                                                     metric=weight_type[1], random_state=0))
+
+            elif 'elbow' in metric:
+                tmp = metric.split('_')
+                assessment = elbow_score(patterns, labels, metric=weight_type[1],
+                                         type=(tmp[1], tmp[2]))
+                assessments_dict[metric].append(assessment)
+
+            elif metric == 'gap statistic':
+                pass
+
+            else:
+                raise RuntimeError("{} isn't a valid assessment metric".format(metric))
+
+        print('Assessment calculated: {0}/{1}'.format(idx + 1, n_labels))
+
+    if 'gap statistic' in assessments_dict.keys():
+        from commontool.algorithm.cluster import hac_scipy
+        from FFA_pattern.tool import k_means, gap_stat_mine
+
+        if 'HAC' in clustering_method:
+            cluster_method = hac_scipy
+        elif 'KM' in clustering_method:
+            cluster_method = k_means
+        else:
+            raise RuntimeError("analysis-{} isn't supported at present!".format(clustering_method))
+
+        labels_list, gaps, s, k_selected = gap_stat_mine(patterns, n_clusters,
+                                                         cluster_method=cluster_method)
+        assessments_dict['gap statistic'] = (gaps, s, k_selected)
+
+    x = np.arange(n_labels)
+    x_labels = n_clusters
+    vline_plotter_holder = []
+    for metric_pair in assessment_metric_pairs:
+        # plot assessment curve
+        v_plotter = ClusteringVlineMoverPlotter(patterns, labels_list, meth_dir, result_dir)
+
+        if metric_pair[0] == 'dice':
+            y = np.mean(assessments_dict[metric_pair[0]], 1)
+            sem = stats.sem(assessments_dict[metric_pair[0]], 1)
+            v_plotter.axes[0].plot(x, y, 'b.-')
+            v_plotter.axes[0].fill_between(x, y-sem, y+sem, alpha=0.5)
+
+        elif 'elbow' in metric_pair[0]:
+            y = assessments_dict[metric_pair[0]]
+            v_plotter.axes[0].plot(x, y, 'k.-')
+
+            x1 = x[:-1]
+            y1 = [y[i] - y[i + 1] for i in x1]
+            fig1, ax1 = plt.subplots()
+            ax1.plot(x1, y1, 'k.-')
+            # ax1.set_title('assessment for #subgroup')
+            # ax1.set_xlabel('#subgroup')
+            ax1.set_xlabel('k')
+            ax1.set_ylabel(metric_pair[0] + "'")
+            if len(x1) > 20:
+                middle_idx = int(len(x1) / 2)
+                ax1.set_xticks(x1[[0, middle_idx, -1]])
+                ax1.set_xticklabels(x_labels[1:][[0, middle_idx, -1]])
+            else:
+                ax1.set_xticks(x1)
+                ax1.set_xticklabels(x_labels[1:])
+
+            x2 = x1[:-1]
+            y2 = [y1[i] - y1[i + 1] for i in x2]
+            fig2, ax2 = plt.subplots()
+            ax2.plot(x2, y2, 'k.-')
+            # ax2.set_title('assessment for #subgroups')
+            # ax2.set_xlabel('#subgroups')
+            # ax2.set_ylabel(metric_pair[0] + "''")
+            ax2.set_xlabel('k')
+            ax2.set_ylabel('-\u25b3V\u2096')
+            if len(x2) > 20:
+                middle_idx = int(len(x2) / 2)
+                ax2.set_xticks(x2[[0, middle_idx, -1]])
+                ax2.set_xticklabels(x_labels[1:-1][[0, middle_idx, -1]])
+            else:
+                ax2.set_xticks(x2)
+                ax2.set_xticklabels(x_labels[1:-1])
+
+        elif metric_pair[0] == 'gap statistic':
+            v_plotter.axes[0].plot(x, assessments_dict[metric_pair[0]][0], 'b.-')
+            v_plotter.axes[0].fill_between(x, assessments_dict[metric_pair[0]][0] - assessments_dict[metric_pair[0]][1],
+                                           assessments_dict[metric_pair[0]][0] + assessments_dict[metric_pair[0]][1],
+                                           alpha=0.5)
+        elif metric_pair[0] == 'silhouette':
+            if x_labels[0] == 1:
+                v_plotter.axes[0].plot(x[1:], assessments_dict[metric_pair[0]], 'b.-')
+            else:
+                v_plotter.axes[0].plot(x, assessments_dict[metric_pair[0]], 'b.-')
+        else:
+            v_plotter.axes[0].plot(x, assessments_dict[metric_pair[0]], 'b.-')
+
+        # v_plotter.axes[0].set_title('assessment for #subgroups')
+        # v_plotter.axes[0].set_xlabel('#subgroups')
+        v_plotter.axes[0].set_xlabel('k')
+        if n_labels > 2:
+            if metric_pair[0] == 'gap statistic':
+                vline_idx = np.where(x_labels == assessments_dict[metric_pair[0]][2])[0][0]
+            else:
+                vline_idx = int(n_labels / 2)
+            v_plotter.axes[0].set_xticks(x[[0, vline_idx, -1]])
+            v_plotter.axes[0].set_xticklabels(x_labels[[0, vline_idx, -1]])
+            # plt.setp(v_plotter.axes[0].get_xticklabels(), rotation=-90, ha='left', rotation_mode='anchor')
+        else:
+            if metric_pair[0] == 'gap statistic':
+                vline_idx = np.where(x_labels == assessments_dict[metric_pair[0]][2])[0][0]
+            else:
+                vline_idx = 0
+            v_plotter.axes[0].set_xticks(x)
+            v_plotter.axes[0].set_xticklabels(x_labels)
+        # v_plotter.axes[0].set_ylabel(metric_pair[0], color='b')
+        # v_plotter.axes[0].tick_params('y', colors='b')
+        v_plotter.axes[0].set_ylabel('W\u2096')
+
+        if len(metric_pair) == 2:
+            # plot another assessment curve in a twin axis
+            # https://matplotlib.org/examples/api/two_scales.html
+            v_plotter.add_twinx(0)
+            if metric_pair[1] == 'dice':
+                y = np.mean(assessments_dict[metric_pair[1]], 1)
+                sem = stats.sem(assessments_dict[metric_pair[1]], 1)
+                v_plotter.axes_twin[0].plot(x, y, 'r.-')
+                v_plotter.axes_twin[0].fill_between(x, y - sem, y + sem, alpha=0.5)
+            elif metric_pair[1] == 'gap statistic':
+                raise RuntimeError("{} can't be plot at twin axis at present!".format(metric_pair[1]))
+            elif metric_pair[1] == 'silhouette':
+                if x_labels[0] == 1:
+                    v_plotter.axes_twin[0].plot(x[1:], assessments_dict[metric_pair[1]], 'b.-')
+                else:
+                    v_plotter.axes_twin[0].plot(x, assessments_dict[metric_pair[1]], 'b.-')
+            else:
+                v_plotter.axes_twin[0].plot(x, assessments_dict[metric_pair[1]], 'r.-')
+
+            v_plotter.axes_twin[0].set_ylabel(metric_pair[1], color='r')
+            v_plotter.axes_twin[0].tick_params('y', colors='r')
+
+        v_plotter.add_vline_mover(vline_idx=vline_idx, x_round=True)
+        v_plotter.figure.tight_layout()
+        vline_plotter_holder.append(v_plotter)
+    # -----------------------
+    print('Finish: calculate assessments')
+
+    plt.show()
+
+
 if __name__ == '__main__':
-    get_roi_pattern()
+    # get_roi_pattern()
     # clustering()
+    assess_n_cluster()
