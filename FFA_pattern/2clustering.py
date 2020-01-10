@@ -395,7 +395,101 @@ def assess_n_cluster():
     plt.show()
 
 
+def gen_mean_activation():
+    import os
+    import numpy as np
+    import nibabel as nib
+
+    from os.path import join as pjoin
+    from commontool.io.io import save2nifti
+
+    # predefine some variates
+    # -----------------------
+    # predefine parameters
+    n_clusters = [2]
+    hemi = 'rh'
+    stats_table_titles = ['label', '#subject',
+                          'min', 'max', 'mean',
+                          'min_roi', 'max_roi', 'mean_roi']
+
+    # predefine paths
+    proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
+    clustering_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5')
+    n_cluster_dirs = pjoin(clustering_dir, 'zscore/HAC_ward_euclidean/{}clusters')
+    roi_file = pjoin(proj_dir, f'data/HCP/label/MMPprob_OFA_FFA_thr1_{hemi}.label')
+    activ_file = pjoin(clustering_dir, f'activation_{hemi}.nii.gz')
+    pattern_file = pjoin(clustering_dir, 'zscore/roi_patterns.npy')
+    # -----------------------
+
+    # get data
+    roi = nib.freesurfer.read_label(roi_file)
+    activ = nib.load(activ_file).get_data().squeeze().T
+    patterns = np.load(pattern_file)
+
+    # analyze labels
+    # --------------
+    for n_cluster in n_clusters:
+        # get clustering labels of subjects
+        n_cluster_dir = n_cluster_dirs.format(n_cluster)
+        group_labels_file = pjoin(n_cluster_dir, 'group_labels')
+        with open(group_labels_file) as rf:
+            group_labels = np.array(rf.read().split(' '), dtype=np.uint16)
+
+        activation_dir = pjoin(n_cluster_dir, 'activation')
+        if not os.path.exists(activation_dir):
+            os.makedirs(activation_dir)
+
+        stats_table_content = dict()
+        for title in stats_table_titles:
+            # initialize statistics table content
+            stats_table_content[title] = []
+
+        mean_activ = np.zeros((0, activ.shape[1]))
+        mean_patterns = np.zeros((0, activ.shape[1]))
+        for label in sorted(set(group_labels)):
+            # get subgroup data
+            subgroup_activ = np.atleast_2d(activ[group_labels == label])
+            subgroup_activ_mean = np.mean(subgroup_activ, 0)
+            subgroup_roi_activ_mean = subgroup_activ_mean[roi]
+
+            mean_activ = np.r_[mean_activ, np.atleast_2d(subgroup_activ_mean)]
+
+            stats_table_content['label'].append(str(label))
+            stats_table_content['#subject'].append(str(subgroup_activ.shape[0]))
+            stats_table_content['min'].append(str(np.min(subgroup_activ_mean)))
+            stats_table_content['max'].append(str(np.max(subgroup_activ_mean)))
+            stats_table_content['mean'].append(str(np.mean(subgroup_activ_mean)))
+            stats_table_content['min_roi'].append(str(np.min(subgroup_roi_activ_mean)))
+            stats_table_content['max_roi'].append(str(np.max(subgroup_roi_activ_mean)))
+            stats_table_content['mean_roi'].append(str(np.mean(subgroup_roi_activ_mean)))
+
+            # get mean patterns
+            subgroup_patterns = patterns[group_labels == label]
+            subgroup_patterns_mean = np.atleast_2d(np.mean(subgroup_patterns, 0))
+            pattern_mean_map = np.ones((1, activ.shape[1])) * np.min(subgroup_patterns_mean)
+            pattern_mean_map[:, roi] = subgroup_patterns_mean
+            mean_patterns = np.r_[mean_patterns, pattern_mean_map]
+
+            save2nifti(pjoin(activation_dir, f'activ_g{label}_{hemi}.nii.gz'), subgroup_activ.T[:, None, None, :])
+
+        # output activ
+        save2nifti(pjoin(activation_dir, f'mean_activ_{hemi}.nii.gz'), mean_activ.T[:, None, None, :])
+        save2nifti(pjoin(activation_dir, f'mean_patterns_{hemi}.nii.gz'), mean_patterns.T[:, None, None, :])
+
+        # output statistics
+        with open(pjoin(activation_dir, f'statistics_{hemi}.csv'), 'w') as f:
+            f.write(','.join(stats_table_titles) + '\n')
+            lines = []
+            for title in stats_table_titles:
+                lines.append(stats_table_content[title])
+            for line in zip(*lines):
+                f.write(','.join(line) + '\n')
+
+        print('{}clusters: done'.format(n_cluster))
+
+
 if __name__ == '__main__':
     # get_roi_pattern()
     # clustering()
-    assess_n_cluster()
+    # assess_n_cluster()
+    gen_mean_activation()
