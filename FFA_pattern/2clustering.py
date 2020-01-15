@@ -10,18 +10,18 @@ def get_roi_pattern():
     # -----------------------
     # predefine parameters
     hemi = 'rh'
-    zscore = True  # If true, do z-score on each subject's FFA pattern
+    zscore = False  # If true, do z-score on each subject's ROI pattern
     thr = None  # a threshold used to cut FFA_data before clustering (default: None)
     bin = False  # If true, binarize FFA_data according to clustering_thr
     size_min = 0  # only work with threshold
 
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    trg_dir = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/zscore')
+    trg_dir = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/raw')
     if not os.path.isdir(trg_dir):
         os.makedirs(trg_dir)
     roi_file = pjoin(proj_dir, f'data/HCP/label/MMPprob_OFA_FFA_thr1_{hemi}.label')
-    activ_file = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/activation.nii.gz')
+    activ_file = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/activation_{hemi}.nii.gz')
     # geo_files = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
     #             'HCP_S1200_GroupAvg_v1/S1200.{}.white_MSMAll.32k_fs_LR.surf.gii'
     geo_files = None
@@ -43,7 +43,7 @@ def get_roi_pattern():
     roi = nib.freesurfer.read_label(roi_file)
     roi_patterns = get_roi_pattern(activ, roi, zscore, thr, bin, size_min, faces, mask)
 
-    np.save(pjoin(trg_dir, 'roi_pattern.npy'), roi_patterns)
+    np.save(pjoin(trg_dir, f'roi_patterns_{hemi}.npy'), roi_patterns)
 
 
 def clustering():
@@ -59,17 +59,17 @@ def clustering():
     print('Start: predefine some variates')
     # -----------------------
     # predefine parameters
-    clustering_method = 'HAC_ward_euclidean'  # 'HAC_average_dice', 'KM', 'LV', 'GN'
+    clustering_method = 'HAC_average_correlation'  # 'HAC_average_dice', 'KM', 'LV', 'GN', 'HAC_average_correlation', 'HAC_ward_euclidean'
     max_n_cluster = 100
     is_graph_needed = True if clustering_method in ('LV', 'GN') else False
     weight_type = ('dissimilar', 'euclidean')  # only work when is_graph_needed is True
 
     # predefine paths
-    src_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/s4_clustering_rh_thr0.5/zscore'
+    src_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/s4_clustering_rh_thr0.5/raw'
     trg_dir = pjoin(src_dir, f'{clustering_method}/results')
     if not os.path.exists(trg_dir):
         os.makedirs(trg_dir)
-    roi_pattern_file = pjoin(src_dir, 'roi_pattern.npy')
+    roi_pattern_file = pjoin(src_dir, 'roi_patterns_rh.npy')
     # -----------------------
     print('Finish: predefine some variates')
 
@@ -143,8 +143,8 @@ def assess_n_cluster():
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
     }
     weight_type = ('dissimilar', 'euclidean')
-    clustering_method = 'HAC_ward_euclidean'
-    max_n_cluster = 50
+    clustering_method = 'HAC_average_correlation'
+    max_n_cluster = 100
     # dice, modularity, silhouette, gap statistic, elbow_inner_standard
     # elbow_inner_centroid, elbow_inner_pairwise, elbow_inter_centroid, elbow_inter_pairwise
     assessment_metric_pairs = [
@@ -162,12 +162,12 @@ def assess_n_cluster():
 
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    pattern_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5/zscore')
+    pattern_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5/raw')
     meth_dir = pjoin(pattern_dir, clustering_method)
     result_dir = pjoin(meth_dir, 'results')
     roi_files = pjoin(proj_dir, 'data/HCP/label/MMPprob_OFA_FFA_thr1_{}.label')
-    activ_file = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5/activation.nii.gz')
-    pattern_file = pjoin(pattern_dir, 'roi_pattern.npy')
+    activ_file = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5/activation_rh.nii.gz')
+    pattern_file = pjoin(pattern_dir, 'roi_patterns_rh.npy')
     # -----------------------
     print('Finish: predefine some variates')
 
@@ -406,7 +406,7 @@ def gen_mean_activation():
     # predefine some variates
     # -----------------------
     # predefine parameters
-    n_clusters = [2]
+    n_clusters = [100]
     hemi = 'rh'
     stats_table_titles = ['label', '#subject',
                           'min', 'max', 'mean',
@@ -415,10 +415,10 @@ def gen_mean_activation():
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
     clustering_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5')
-    n_cluster_dirs = pjoin(clustering_dir, 'zscore/HAC_ward_euclidean/{}clusters')
+    n_cluster_dirs = pjoin(clustering_dir, 'raw/HAC_average_correlation/{}clusters')
     roi_file = pjoin(proj_dir, f'data/HCP/label/MMPprob_OFA_FFA_thr1_{hemi}.label')
     activ_file = pjoin(clustering_dir, f'activation_{hemi}.nii.gz')
-    pattern_file = pjoin(clustering_dir, 'zscore/roi_patterns.npy')
+    pattern_file = pjoin(clustering_dir, 'raw/roi_patterns_rh.npy')
     # -----------------------
 
     # get data
@@ -470,7 +470,7 @@ def gen_mean_activation():
             pattern_mean_map[:, roi] = subgroup_patterns_mean
             mean_patterns = np.r_[mean_patterns, pattern_mean_map]
 
-            save2nifti(pjoin(activation_dir, f'activ_g{label}_{hemi}.nii.gz'), subgroup_activ.T[:, None, None, :])
+            # save2nifti(pjoin(activation_dir, f'activ_g{label}_{hemi}.nii.gz'), subgroup_activ.T[:, None, None, :])
 
         # output activ
         save2nifti(pjoin(activation_dir, f'mean_activ_{hemi}.nii.gz'), mean_activ.T[:, None, None, :])
@@ -488,8 +488,58 @@ def gen_mean_activation():
         print('{}clusters: done'.format(n_cluster))
 
 
+def gen_mean_structure():
+    import os
+    import numpy as np
+    import nibabel as nib
+
+    from os.path import join as pjoin
+    from commontool.io.io import save2nifti
+
+    # predefine some variates
+    # -----------------------
+    # predefine parameters
+    n_clusters = [100]
+    hemi = 'rh'
+
+    # predefine paths
+    proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
+    clustering_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5')
+    n_cluster_dirs = pjoin(clustering_dir, 'zscore/HAC_ward_euclidean/{}clusters')
+    data_file = pjoin(clustering_dir, f'curvature_{hemi}.nii.gz')
+    # -----------------------
+
+    # get data
+    data = nib.load(data_file).get_data().squeeze().T
+
+    # analyze labels
+    # --------------
+    for n_cluster in n_clusters:
+        # get clustering labels of subjects
+        n_cluster_dir = n_cluster_dirs.format(n_cluster)
+        group_labels_file = pjoin(n_cluster_dir, 'group_labels')
+        with open(group_labels_file) as rf:
+            group_labels = np.array(rf.read().split(' '), dtype=np.uint16)
+
+        structure_dir = pjoin(n_cluster_dir, 'structure')
+        if not os.path.exists(structure_dir):
+            os.makedirs(structure_dir)
+
+        mean_data = np.zeros((0, data.shape[1]))
+        for label in np.unique(group_labels):
+            # get subgroup data
+            subgroup_data = np.atleast_2d(data[group_labels == label])
+            subgroup_data_mean = np.mean(subgroup_data, 0)
+            mean_data = np.r_[mean_data, np.atleast_2d(subgroup_data_mean)]
+
+        # output
+        save2nifti(pjoin(structure_dir, f'mean_curv_{hemi}.nii.gz'), mean_data.T[:, None, None, :])
+        print('{}clusters: done'.format(n_cluster))
+
+
 if __name__ == '__main__':
     # get_roi_pattern()
     # clustering()
     # assess_n_cluster()
-    gen_mean_activation()
+    # gen_mean_activation()
+    gen_mean_structure()

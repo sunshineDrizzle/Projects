@@ -41,5 +41,5 @@ if __name__ == '__main__':
             print('Finished: merge {0}_cope{1}'.format(subject_id, k))
 
     for k in interested_copes.keys():
-        save2cifti(trg_file.format(k, interested_copes[k]),
+        save2cifti(trg_file.format(k+1, interested_copes[k]),
                    np.array(maps_new_dict[k]), brain_models, map_names_new_dict[k])

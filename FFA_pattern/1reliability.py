@@ -12,7 +12,7 @@ def calc_reliability():
     from scipy.stats import pearsonr
     from commontool.io.io import CiftiReader
 
-    hemi = 'lh'
+    hemi = 'rh'
     brain_structure = {
         'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
@@ -23,9 +23,9 @@ def calc_reliability():
     if not os.path.isdir(trg_dir):
         os.makedirs(trg_dir)
 
-    test_activ_file = pjoin(data_dir, 'wm/analysis_s4/S1200_1080_WM_cope19_FACE-AVG_s4_MSMAll_32k_fs_LR.dscalar.nii')
+    test_activ_file = pjoin(data_dir, f'wm/analysis_s4/cope20_face-avg_zstat_{hemi}.nii.gz')
     retest_activ_file = pjoin(data_dir, f'emotion/analysis_s4/cope3_face-shape_zstat_{hemi}.nii.gz')
-    test_subject_ids_file = pjoin(data_dir, 'wm/subject_id')
+    test_subject_ids_file = pjoin(data_dir, 'wm/analysis_s4/subject_id')
     retest_subject_ids_file = pjoin(data_dir, 'emotion/analysis_s4/subject_id')
     mask_vertices_file = pjoin(data_dir, f'label/MMPprob_OFA_FFA_thr1_{hemi}.label')
 
@@ -41,8 +41,8 @@ def calc_reliability():
 
     # get activation
     mask_vertices = nib.freesurfer.read_label(mask_vertices_file)
-    test_reader = CiftiReader(test_activ_file)
-    test_activ_mask = test_reader.get_data(brain_structure[hemi], True)[test_indices][:, mask_vertices]
+    test_activ_mask = nib.load(test_activ_file).get_data().squeeze().T
+    test_activ_mask = test_activ_mask[test_indices][:, mask_vertices]
     retest_activ_mask = nib.load(retest_activ_file).get_data().squeeze().T
     retest_activ_mask = retest_activ_mask[retest_indices][:, mask_vertices]
 
@@ -60,8 +60,8 @@ def plot_reliability():
     from matplotlib import pyplot as plt
     from commontool.algorithm.plot import show_bar_value
 
-    hemi = 'rh'  # lh, rh, or both
-    thr = 0.5
+    hemi = 'both'  # lh, rh, or both
+    thr = None
     trg_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern/analysis/s4_reliability'
 
     if hemi == 'both':
@@ -95,7 +95,7 @@ def select_subject():
 
     from os.path import join as pjoin
 
-    hemi = 'rh'
+    hemi = 'rh'  # 'lh', 'rh', 'both'
     thr = 0.5
     anal_dir = '/nfs/t3/workingshop/chenxiayu/study/FFA_pattern/analysis'
     src_dir = pjoin(anal_dir, 's4_reliability')
@@ -103,18 +103,25 @@ def select_subject():
     if not os.path.isdir(trg_dir):
         os.makedirs(trg_dir)
 
-    reliability = pkl.load(open(pjoin(src_dir, f'reliability_{hemi}.pkl'), 'rb'))
-    corrs = np.array(reliability['corr'])
-    subj_ids = np.array(reliability['sid'])
+    if hemi == 'both':
+        reliability_lh = pkl.load(open(pjoin(src_dir, f'reliability_lh.pkl'), 'rb'))
+        reliability_rh = pkl.load(open(pjoin(src_dir, f'reliability_rh.pkl'), 'rb'))
+        corrs_lh = np.asarray(reliability_lh['corr'])
+        corrs_rh = np.asarray(reliability_rh['corr'])
+        subj_ids_lh = np.asarray(reliability_lh['sid'])
+        subj_ids_rh = np.asarray(reliability_rh['sid'])
+        subj_ids_selected = sorted(set(subj_ids_lh[corrs_lh > thr]).intersection(subj_ids_rh[corrs_rh > thr]))
+    else:
+        reliability = pkl.load(open(pjoin(src_dir, f'reliability_{hemi}.pkl'), 'rb'))
+        corrs = np.array(reliability['corr'])
+        subj_ids = np.array(reliability['sid'])
+        subj_ids_selected = subj_ids[corrs > thr]
 
-    subj_ids_selected = subj_ids[corrs > thr]
     with open(pjoin(trg_dir, 'subject_id'), 'w') as wf:
         wf.write('\n'.join(subj_ids_selected))
 
 
-def get_activation():
-    import nibabel as nib
-
+def prepare_data():
     from os.path import join as pjoin
     from commontool.io.io import CiftiReader, save2nifti
 
@@ -126,32 +133,26 @@ def get_activation():
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
     data_dir = pjoin(proj_dir, 'data/HCP')
     trg_dir = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5')
+    trg_file = pjoin(trg_dir, f'curvature_{hemi}.nii.gz')
     subj_id_file = pjoin(trg_dir, 'subject_id')
-    subj_id_wm_file = pjoin(data_dir, 'wm/subject_id')
-    # subj_id_emotion_file = pjoin(data_dir, 'emotion/analysis_s2/subject_id')
-    activ_wm_file = pjoin(data_dir, 'wm/analysis_s4/S1200_1080_WM_cope19_FACE-AVG_s4_MSMAll_32k_fs_LR.dscalar.nii')
-    # activ_emotion_file = pjoin(data_dir, f'emotion/analysis_s2/cope3_face-shape_zstat_{hemi}.nii.gz')
+    subj_id_all_file = pjoin(data_dir, 'structure/subject_id_curv')
+    data_file = pjoin(data_dir, 'structure/S1200.All.curvature_MSMAll.32k_fs_LR.dscalar.nii')
 
     subj_ids = open(subj_id_file).read().splitlines()
-    subj_ids_wm = open(subj_id_wm_file).read().splitlines()
-    # subj_ids_emotion = open(subj_id_emotion_file).read().splitlines()
-    activ_wm = CiftiReader(activ_wm_file).get_data(brain_structure[hemi], True)
-    # activ_emotion = nib.load(activ_emotion_file).get_data().squeeze().T
+    subj_ids_all = open(subj_id_all_file).read().splitlines()
+    data = CiftiReader(data_file).get_data(brain_structure[hemi], True)
 
-    wm_indices = []
-    # emotion_indices = []
+    indices = []
     for i in subj_ids:
-        wm_indices.append(subj_ids_wm.index(i))
-        # emotion_indices.append(subj_ids_emotion.index(i))
+        indices.append(subj_ids_all.index(i))
 
-    # activ = (activ_wm[wm_indices] + activ_emotion[emotion_indices]) / 2
-    activ = activ_wm[wm_indices]
-    activ = activ.T[:, None, None, :]
-    save2nifti(pjoin(trg_dir, 'activation.nii.gz'), activ)
+    data_new = data[indices]
+    data_new = data_new.T[:, None, None, :]
+    save2nifti(trg_file, data_new)
 
 
 if __name__ == '__main__':
     # calc_reliability()
     # plot_reliability()
-    # select_subject()
-    get_activation()
+    select_subject()
+    # prepare_data()
