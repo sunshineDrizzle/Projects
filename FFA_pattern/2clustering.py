@@ -10,14 +10,14 @@ def get_roi_pattern():
     # -----------------------
     # predefine parameters
     hemi = 'rh'
-    zscore = False  # If true, do z-score on each subject's ROI pattern
+    zscore = True  # If true, do z-score on each subject's ROI pattern
     thr = None  # a threshold used to cut FFA_data before clustering (default: None)
     bin = False  # If true, binarize FFA_data according to clustering_thr
     size_min = 0  # only work with threshold
 
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    trg_dir = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/raw')
+    trg_dir = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/zscore')
     if not os.path.isdir(trg_dir):
         os.makedirs(trg_dir)
     roi_file = pjoin(proj_dir, f'data/HCP/label/MMPprob_OFA_FFA_thr1_{hemi}.label')
@@ -415,10 +415,10 @@ def gen_mean_activation():
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
     clustering_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5')
-    n_cluster_dirs = pjoin(clustering_dir, 'raw/HAC_average_correlation/{}clusters')
+    n_cluster_dirs = pjoin(clustering_dir, 'zscore/HAC_ward_euclidean/{}clusters')
     roi_file = pjoin(proj_dir, f'data/HCP/label/MMPprob_OFA_FFA_thr1_{hemi}.label')
     activ_file = pjoin(clustering_dir, f'activation_{hemi}.nii.gz')
-    pattern_file = pjoin(clustering_dir, 'raw/roi_patterns_rh.npy')
+    pattern_file = pjoin(clustering_dir, 'zscore/roi_patterns_rh.npy')
     # -----------------------
 
     # get data
@@ -470,14 +470,14 @@ def gen_mean_activation():
             pattern_mean_map[:, roi] = subgroup_patterns_mean
             mean_patterns = np.r_[mean_patterns, pattern_mean_map]
 
-            # save2nifti(pjoin(activation_dir, f'activ_g{label}_{hemi}.nii.gz'), subgroup_activ.T[:, None, None, :])
+            save2nifti(pjoin(activation_dir, f'activ_g{label}_{hemi}.nii.gz'), subgroup_activ.T[:, None, None, :])
 
         # output activ
-        save2nifti(pjoin(activation_dir, f'mean_activ_{hemi}.nii.gz'), mean_activ.T[:, None, None, :])
-        save2nifti(pjoin(activation_dir, f'mean_patterns_{hemi}.nii.gz'), mean_patterns.T[:, None, None, :])
+        save2nifti(pjoin(activation_dir, f'mean_activ_{hemi}_new.nii.gz'), mean_activ.T[:, None, None, :])
+        save2nifti(pjoin(activation_dir, f'mean_patterns_{hemi}_new.nii.gz'), mean_patterns.T[:, None, None, :])
 
         # output statistics
-        with open(pjoin(activation_dir, f'statistics_{hemi}.csv'), 'w') as f:
+        with open(pjoin(activation_dir, f'statistics_{hemi}_new.csv'), 'w') as f:
             f.write(','.join(stats_table_titles) + '\n')
             lines = []
             for title in stats_table_titles:
@@ -541,5 +541,5 @@ if __name__ == '__main__':
     # get_roi_pattern()
     # clustering()
     # assess_n_cluster()
-    # gen_mean_activation()
-    gen_mean_structure()
+    gen_mean_activation()
+    # gen_mean_structure()
