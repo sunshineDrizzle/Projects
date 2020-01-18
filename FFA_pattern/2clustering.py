@@ -5,23 +5,28 @@ def get_roi_pattern():
 
     from os.path import join as pjoin
     from FFA_pattern.tool import get_roi_pattern
+    from commontool.io.io import CiftiReader
 
     print('Start: predefine some variates')
     # -----------------------
     # predefine parameters
     hemi = 'rh'
-    zscore = True  # If true, do z-score on each subject's ROI pattern
+    brain_structure = {
+        'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    }
+    zscore = False  # If true, do z-score on each subject's ROI pattern
     thr = None  # a threshold used to cut FFA_data before clustering (default: None)
     bin = False  # If true, binarize FFA_data according to clustering_thr
     size_min = 0  # only work with threshold
 
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    trg_dir = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/zscore')
+    trg_dir = pjoin(proj_dir, f'analysis/s2_rh/raw')
     if not os.path.isdir(trg_dir):
         os.makedirs(trg_dir)
     roi_file = pjoin(proj_dir, f'data/HCP/label/MMPprob_OFA_FFA_thr1_{hemi}.label')
-    activ_file = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5/activation_{hemi}.nii.gz')
+    activ_file = pjoin(proj_dir, f'analysis/s2_rh/activation.dscalar.nii')
     # geo_files = '/nfs/p1/public_dataset/datasets/hcp/DATA/HCP_S1200_GroupAvg_v1/' \
     #             'HCP_S1200_GroupAvg_v1/S1200.{}.white_MSMAll.32k_fs_LR.surf.gii'
     geo_files = None
@@ -39,7 +44,8 @@ def get_roi_pattern():
     else:
         raise NotImplementedError
 
-    activ = nib.load(activ_file).get_data().squeeze().T
+    # activ = nib.load(activ_file).get_data().squeeze().T
+    activ = CiftiReader(activ_file).get_data(brain_structure[hemi], True)
     roi = nib.freesurfer.read_label(roi_file)
     roi_patterns = get_roi_pattern(activ, roi, zscore, thr, bin, size_min, faces, mask)
 
@@ -59,13 +65,13 @@ def clustering():
     print('Start: predefine some variates')
     # -----------------------
     # predefine parameters
-    clustering_method = 'HAC_average_correlation'  # 'HAC_average_dice', 'KM', 'LV', 'GN', 'HAC_average_correlation', 'HAC_ward_euclidean'
+    clustering_method = 'HAC_ward_euclidean'  # 'HAC_average_dice', 'KM', 'LV', 'GN', 'HAC_average_correlation', 'HAC_ward_euclidean'
     max_n_cluster = 100
     is_graph_needed = True if clustering_method in ('LV', 'GN') else False
     weight_type = ('dissimilar', 'euclidean')  # only work when is_graph_needed is True
 
     # predefine paths
-    src_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/s4_clustering_rh_thr0.5/raw'
+    src_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/s2_rh/raw'
     trg_dir = pjoin(src_dir, f'{clustering_method}/results')
     if not os.path.exists(trg_dir):
         os.makedirs(trg_dir)
@@ -143,7 +149,7 @@ def assess_n_cluster():
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
     }
     weight_type = ('dissimilar', 'euclidean')
-    clustering_method = 'HAC_average_correlation'
+    clustering_method = 'HAC_ward_euclidean'
     max_n_cluster = 100
     # dice, modularity, silhouette, gap statistic, elbow_inner_standard
     # elbow_inner_centroid, elbow_inner_pairwise, elbow_inter_centroid, elbow_inter_pairwise
@@ -162,11 +168,11 @@ def assess_n_cluster():
 
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    pattern_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5/raw')
+    pattern_dir = pjoin(proj_dir, 'analysis/s2_rh/raw')
     meth_dir = pjoin(pattern_dir, clustering_method)
     result_dir = pjoin(meth_dir, 'results')
     roi_files = pjoin(proj_dir, 'data/HCP/label/MMPprob_OFA_FFA_thr1_{}.label')
-    activ_file = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5/activation_rh.nii.gz')
+    activ_file = pjoin(proj_dir, 'analysis/s2_rh/activation.dscalar.nii')
     pattern_file = pjoin(pattern_dir, 'roi_patterns_rh.npy')
     # -----------------------
     print('Finish: predefine some variates')
@@ -174,19 +180,19 @@ def assess_n_cluster():
     print('Start: prepare data')
     # -----------------------
     # prepare patterns
-    # reader = CiftiReader(activ_file)
+    reader = CiftiReader(activ_file)
     if hemi == 'both':
         roi_lh = nib.freesurfer.read_label(roi_files.format('lh'))
         roi_rh = nib.freesurfer.read_label(roi_files.format('rh'))
-        # activ_roi_lh = reader.get_data(brain_structure['lh'], True)[:, roi_lh]
-        # activ_roi_rh = reader.get_data(brain_structure['rh'], True)[:, roi_rh]
-        activ_roi_lh = nib.load(activ_file.format('lh')).get_data().squeeze().T[:, roi_lh]
-        activ_roi_rh = nib.load(activ_file.format('rh')).get_data().squeeze().T[:, roi_rh]
+        activ_roi_lh = reader.get_data(brain_structure['lh'], True)[:, roi_lh]
+        activ_roi_rh = reader.get_data(brain_structure['rh'], True)[:, roi_rh]
+        # activ_roi_lh = nib.load(activ_file.format('lh')).get_data().squeeze().T[:, roi_lh]
+        # activ_roi_rh = nib.load(activ_file.format('rh')).get_data().squeeze().T[:, roi_rh]
         activ_roi = np.c_[activ_roi_lh, activ_roi_rh]
     else:
         roi = nib.freesurfer.read_label(roi_files.format(hemi))
-        # activ_roi = reader.get_data(brain_structure[hemi], True)[:, roi]
-        activ_roi = nib.load(activ_file).get_data().squeeze().T[:, roi]
+        activ_roi = reader.get_data(brain_structure[hemi], True)[:, roi]
+        # activ_roi = nib.load(activ_file).get_data().squeeze().T[:, roi]
     patterns = np.load(pattern_file)
     # -----------------------
     print('Finish: prepare data')
@@ -401,29 +407,35 @@ def gen_mean_activation():
     import nibabel as nib
 
     from os.path import join as pjoin
-    from commontool.io.io import save2nifti
+    from commontool.io.io import save2nifti, CiftiReader
 
     # predefine some variates
     # -----------------------
     # predefine parameters
+    prob_thr = 1.65
     n_clusters = [100]
     hemi = 'rh'
+    brain_structure = {
+        'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    }
     stats_table_titles = ['label', '#subject',
                           'min', 'max', 'mean',
                           'min_roi', 'max_roi', 'mean_roi']
 
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    clustering_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5')
+    clustering_dir = pjoin(proj_dir, 'analysis/s2_rh')
     n_cluster_dirs = pjoin(clustering_dir, 'zscore/HAC_ward_euclidean/{}clusters')
     roi_file = pjoin(proj_dir, f'data/HCP/label/MMPprob_OFA_FFA_thr1_{hemi}.label')
-    activ_file = pjoin(clustering_dir, f'activation_{hemi}.nii.gz')
-    pattern_file = pjoin(clustering_dir, 'zscore/roi_patterns_rh.npy')
+    activ_file = pjoin(clustering_dir, f'activation.dscalar.nii')
+    pattern_file = pjoin(clustering_dir, f'zscore/roi_patterns_{hemi}.npy')
     # -----------------------
 
     # get data
     roi = nib.freesurfer.read_label(roi_file)
-    activ = nib.load(activ_file).get_data().squeeze().T
+    # activ = nib.load(activ_file).get_data().squeeze().T
+    activ = CiftiReader(activ_file).get_data(brain_structure[hemi], True)
     patterns = np.load(pattern_file)
 
     # analyze labels
@@ -445,14 +457,22 @@ def gen_mean_activation():
             stats_table_content[title] = []
 
         mean_activ = np.zeros((0, activ.shape[1]))
+        mean_std_activ = np.zeros((0, activ.shape[1]))
+        prob_activ = np.zeros((0, activ.shape[1]))
         mean_patterns = np.zeros((0, activ.shape[1]))
+        mean_std_patterns = np.zeros((0, activ.shape[1]))
         for label in sorted(set(group_labels)):
             # get subgroup data
             subgroup_activ = np.atleast_2d(activ[group_labels == label])
             subgroup_activ_mean = np.mean(subgroup_activ, 0)
+            subgroup_activ_prob = np.mean(subgroup_activ > prob_thr, 0)
+            subgroup_activ_mean_std = subgroup_activ_mean / np.std(subgroup_activ, 0)
+            subgroup_activ_mean_std[np.isnan(subgroup_activ_mean_std)] = 0
             subgroup_roi_activ_mean = subgroup_activ_mean[roi]
 
             mean_activ = np.r_[mean_activ, np.atleast_2d(subgroup_activ_mean)]
+            mean_std_activ = np.r_[mean_std_activ, np.atleast_2d(subgroup_activ_mean_std)]
+            prob_activ = np.r_[prob_activ, np.atleast_2d(subgroup_activ_prob)]
 
             stats_table_content['label'].append(str(label))
             stats_table_content['#subject'].append(str(subgroup_activ.shape[0]))
@@ -465,25 +485,36 @@ def gen_mean_activation():
 
             # get mean patterns
             subgroup_patterns = patterns[group_labels == label]
-            subgroup_patterns_mean = np.atleast_2d(np.mean(subgroup_patterns, 0))
+            subgroup_patterns_mean = np.mean(subgroup_patterns, 0)
+            subgroup_patterns_mean_std = subgroup_patterns_mean / np.std(subgroup_patterns, 0)
+            subgroup_patterns_mean = subgroup_patterns_mean[None, :]
+            subgroup_patterns_mean_std = subgroup_patterns_mean_std[None, :]
+
             pattern_mean_map = np.ones((1, activ.shape[1])) * np.min(subgroup_patterns_mean)
             pattern_mean_map[:, roi] = subgroup_patterns_mean
             mean_patterns = np.r_[mean_patterns, pattern_mean_map]
 
-            save2nifti(pjoin(activation_dir, f'activ_g{label}_{hemi}.nii.gz'), subgroup_activ.T[:, None, None, :])
+            pattern_mean_std_map = np.ones((1, activ.shape[1])) * np.min(subgroup_patterns_mean_std)
+            pattern_mean_std_map[:, roi] = subgroup_patterns_mean_std
+            mean_std_patterns = np.r_[mean_std_patterns, pattern_mean_std_map]
+
+            # save2nifti(pjoin(activation_dir, f'activ_g{label}_{hemi}.nii.gz'), subgroup_activ.T[:, None, None, :])
 
         # output activ
-        save2nifti(pjoin(activation_dir, f'mean_activ_{hemi}_new.nii.gz'), mean_activ.T[:, None, None, :])
-        save2nifti(pjoin(activation_dir, f'mean_patterns_{hemi}_new.nii.gz'), mean_patterns.T[:, None, None, :])
+        # save2nifti(pjoin(activation_dir, f'mean_activ_{hemi}.nii.gz'), mean_activ.T[:, None, None, :])
+        # save2nifti(pjoin(activation_dir, f'mean_std_activ_{hemi}.nii.gz'), mean_std_activ.T[:, None, None, :])
+        save2nifti(pjoin(activation_dir, f'prob{prob_thr}_activ_{hemi}.nii.gz'), prob_activ.T[:, None, None, :])
+        # save2nifti(pjoin(activation_dir, f'mean_patterns_{hemi}.nii.gz'), mean_patterns.T[:, None, None, :])
+        # save2nifti(pjoin(activation_dir, f'mean_std_patterns_{hemi}.nii.gz'), mean_std_patterns.T[:, None, None, :])
 
         # output statistics
-        with open(pjoin(activation_dir, f'statistics_{hemi}_new.csv'), 'w') as f:
-            f.write(','.join(stats_table_titles) + '\n')
-            lines = []
-            for title in stats_table_titles:
-                lines.append(stats_table_content[title])
-            for line in zip(*lines):
-                f.write(','.join(line) + '\n')
+        # with open(pjoin(activation_dir, f'statistics_{hemi}.csv'), 'w') as f:
+        #     f.write(','.join(stats_table_titles) + '\n')
+        #     lines = []
+        #     for title in stats_table_titles:
+        #         lines.append(stats_table_content[title])
+        #     for line in zip(*lines):
+        #         f.write(','.join(line) + '\n')
 
         print('{}clusters: done'.format(n_cluster))
 
@@ -500,11 +531,11 @@ def gen_mean_structure():
     # -----------------------
     # predefine parameters
     n_clusters = [100]
-    hemi = 'rh'
+    hemi = 'lh'
 
     # predefine paths
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    clustering_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5')
+    clustering_dir = pjoin(proj_dir, 'analysis/s2_rh')
     n_cluster_dirs = pjoin(clustering_dir, 'zscore/HAC_ward_euclidean/{}clusters')
     data_file = pjoin(clustering_dir, f'curvature_{hemi}.nii.gz')
     # -----------------------

@@ -8,21 +8,27 @@ def calc_subgroup_mean_representation():
 
     from os.path import join as pjoin
     from scipy.spatial.distance import cdist
+    from commontool.io.io import CiftiReader
 
     hemi = 'rh'
+    brain_structure = {
+        'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
+        'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
+    }
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
-    clustering_dir = pjoin(proj_dir, 'analysis/s4_clustering_rh_thr0.5')
-    n_cluster_dir = pjoin(clustering_dir, 'raw/HAC_average_correlation/100clusters')
+    clustering_dir = pjoin(proj_dir, 'analysis/s2_rh')
+    n_cluster_dir = pjoin(clustering_dir, 'raw/HAC_ward_euclidean/100clusters')
     repre_dir = pjoin(n_cluster_dir, 'activation/representation')
     if not os.path.exists(repre_dir):
         os.makedirs(repre_dir)
 
     roi_file = pjoin(proj_dir, 'data/HCP/label/MMPprob_OFA_FFA_thr1_{}.label'.format(hemi))
-    activ_file = pjoin(clustering_dir, 'activation_rh.nii.gz')
+    activ_file = pjoin(clustering_dir, 'activation.dscalar.nii')
     group_labels_file = pjoin(n_cluster_dir, 'group_labels')
 
     roi = nib.freesurfer.read_label(roi_file)
-    activ = nib.load(activ_file).get_data().squeeze().T
+    # activ = nib.load(activ_file).get_data().squeeze().T
+    activ = CiftiReader(activ_file).get_data(brain_structure[hemi], True)
     group_labels = np.array(open(group_labels_file).read().split(' '), dtype=np.uint16)
     roi_activ = activ[:, roi]
 
@@ -43,8 +49,8 @@ def plot_representation():
     from scipy.stats import sem
     from matplotlib import pyplot as plt
 
-    fname = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/s4_clustering_rh_thr0.5/' \
-            'raw/HAC_average_correlation/100clusters/activation/representation/representation_rh.pkl'
+    fname = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/s2_rh/' \
+            'raw/HAC_ward_euclidean/100clusters/activation/representation/representation_rh.pkl'
     representations = pkl.load(open(fname, 'rb'))
     representation_means = []
     representation_sems = []

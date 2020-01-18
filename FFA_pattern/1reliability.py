@@ -125,14 +125,14 @@ def prepare_data():
     from os.path import join as pjoin
     from commontool.io.io import CiftiReader, save2nifti
 
-    hemi = 'rh'
+    hemi = 'lh'
     brain_structure = {
         'lh': 'CIFTI_STRUCTURE_CORTEX_LEFT',
         'rh': 'CIFTI_STRUCTURE_CORTEX_RIGHT'
     }
     proj_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern'
     data_dir = pjoin(proj_dir, 'data/HCP')
-    trg_dir = pjoin(proj_dir, f'analysis/s4_clustering_{hemi}_thr0.5')
+    trg_dir = pjoin(proj_dir, f'analysis/s2_rh')
     trg_file = pjoin(trg_dir, f'curvature_{hemi}.nii.gz')
     subj_id_file = pjoin(trg_dir, 'subject_id')
     subj_id_all_file = pjoin(data_dir, 'structure/subject_id_curv')
@@ -154,5 +154,5 @@ def prepare_data():
 if __name__ == '__main__':
     # calc_reliability()
     # plot_reliability()
-    select_subject()
-    # prepare_data()
+    # select_subject()
+    prepare_data()
