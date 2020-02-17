@@ -8,8 +8,7 @@ def rois_stats():
     from os.path import join as pjoin
     from commontool.io.io import save2nifti
 
-    roi_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/' \
-              'analysis/s2_rh/zscore/HAC_ward_euclidean/100clusters/activation/ROIs'
+    roi_dir = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/s2_rh/zscore/HAC_ward_euclidean/100clusters/activation/ROIs/v3'
     roi_file = pjoin(roi_dir, 'rois.nii.gz')
     roi2label_file = pjoin(roi_dir, 'roi2label.csv')
     group_label_file = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/' \
@@ -65,8 +64,8 @@ def plot_roi_info():
     from matplotlib import pyplot as plt
     from commontool.algorithm.plot import show_bar_value, auto_bar_width
 
-    roi_info_file = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/' \
-                    'analysis/s2_rh/zscore/HAC_ward_euclidean/100clusters/activation/ROIs/rois_info.pkl'
+    roi_info_file = '/nfs/s2/userhome/chenxiayu/workingdir/study/FFA_pattern/analysis/s2_rh/zscore/' \
+                    'HAC_ward_euclidean/100clusters/activation/ROIs/v3/rois_info.pkl'
     roi_infos = pkl.load(open(roi_info_file, 'rb'))
 
     # -plot n_group and n_subject-
@@ -105,4 +104,5 @@ def plot_roi_info():
 
 
 if __name__ == '__main__':
+    # rois_stats()
     plot_roi_info()
